@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -15,32 +16,49 @@ export async function POST(req: Request) {
       );
     }
 
+    // Conectar ao Gemini 2.0 (versão grátis)
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
     });
 
     const bytes = Buffer.from(await file.arrayBuffer());
 
     const prompt = `
-    Você é um especialista em análise de contas de energia ( / qualquer distribuidora).
-    Analise a conta enviada (imagem/PDF).
+Você é um especialista em análise de contas de energia elétrica.
 
-    Explique em português claro e direto:
+Analise cuidadosamente a conta enviada e retorne um JSON EXATAMENTE neste formato:
 
-    1. Valor total da conta + se aumentou comparado ao consumo médio.
-    2. Consumo em kWh e se está acima do esperado.
-    3. Se existe bandeira tarifária (verde, amarela, vermelha).
-    4. Quais eletrodomésticos podem estar elevando o consumo.
-    5. Se o valor está coerente ou se parece errado.
-    6. Pontos de desperdício possíveis.
-    7. Dicas práticas e personalizadas para economizar.
-    8. Uma estimativa de quanto a pessoa pode economizar por mês.
+{
+  "summary": "",
+  "financial": {
+    "total_value": 0,
+    "due_date": "",
+    "is_value_high": false,
+    "monthly_variation": ""
+  },
+  "consumption": {
+    "total_kwh": 0,
+    "status": "",
+    "is_above_expected": false,
+    "comparison": ""
+  },
+  "tariff": {
+    "flag": "",
+    "description": ""
+  },
+  "appliances": [],
+  "waste_points": [],
+  "tips": [],
+  "estimated_saving": ""
+}
 
-    IMPORTANTE:
-  - Responda APENAS em texto natural (NÃO use JSON).
-  - Seja direto, amigável e fácil de entender.
-  - Gere um relatório completo e profissional.
+Regras:
+- Retorne APENAS o JSON.
+- Sem markdown.
+- Sem explicações.
+- Se faltar dados, coloque null ou "".
 `;
 
     const result = await model.generateContent({
@@ -60,13 +78,36 @@ export async function POST(req: Request) {
       ],
     });
 
-    const text = result.response.text();
+    let text = result.response.text();
 
-    return NextResponse.json({ analysis: text });
+    const cleaned = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    let analysis;
+
+    try {
+      analysis = JSON.parse(cleaned);
+    } catch (error) {
+      console.error("Erro ao parsear JSON:", error);
+      analysis = {
+        summary: "Não foi possível analisar a conta automaticamente.",
+        financial: {},
+        consumption: {},
+        tariff: {},
+        appliances: [],
+        waste_points: [],
+        tips: [],
+        estimated_saving: "",
+      };
+    }
+
+    return NextResponse.json({ analysis });
   } catch (error) {
-    console.error(error);
+    console.error("Erro geral:", error);
     return NextResponse.json(
-      { error: "Erro ao analisar a conta." },
+      { error: "Erro interno ao analisar a conta." },
       { status: 500 },
     );
   }
