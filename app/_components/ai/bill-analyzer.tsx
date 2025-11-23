@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
-
-import type React from "react";
 
 import { useState } from "react";
 import {
@@ -10,7 +8,7 @@ import {
   ScanLine,
   CheckCircle2,
   AlertTriangle,
-  FileJson,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,47 +18,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function BillAnalyzer() {
+  const [file, setFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyzedData, setAnalyzedData] = useState<any>(null);
-  const [dragActive, setDragActive] = useState(false);
+  const [analysisText, setAnalysisText] = useState<string | null>(null);
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
+  const uploadAndAnalyze = async () => {
+    if (!file) return;
 
-  const simulateAnalysis = async () => {
     setIsAnalyzing(true);
 
+    const form = new FormData();
+    form.append("file", file);
+
     try {
-      // Calling our internal API route
-      const response = await fetch("/api/analyze", {
+      const res = await fetch("/api/analyze", {
         method: "POST",
+        body: form,
       });
 
-      const data = await response.json();
-
-      setAnalyzedData(data);
-    } catch (error) {
-      console.error("Erro na análise:", error);
-    } finally {
-      setIsAnalyzing(false);
+      const json = await res.json();
+      setAnalysisText(json.analysis);
+    } catch (err) {
+      console.error(err);
     }
+
+    setIsAnalyzing(false);
   };
 
   return (
@@ -71,52 +55,50 @@ export function BillAnalyzer() {
           EcoWater AI
         </CardTitle>
         <CardDescription className="text-muted-foreground">
-          Transforme sua conta em economia real com Gemini
+          Análise automática da conta — powered by Gemini
         </CardDescription>
       </CardHeader>
+
       <CardContent className="p-6">
-        {!analyzedData ? (
-          <div
-            className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors ${dragActive ? "border-primary bg-secondary/50" : "border-border hover:border-primary/50 bg-secondary/20"} `}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={(e) => {
-              handleDrag(e);
-              simulateAnalysis();
-            }}
-          >
+        {!analysisText ? (
+          // UPLOAD
+          <div className="border-border bg-secondary/20 flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center">
             <div className="bg-secondary border-border mb-4 rounded-full border p-4">
               <Upload className="text-primary h-8 w-8" />
             </div>
-            <h3 className="text-foreground mb-1 text-lg font-semibold">
-              Upload da Conta
-            </h3>
-            <p className="text-muted-foreground mb-6 max-w-xs text-sm">
-              Arraste sua conta de água ou luz aqui, ou clique para selecionar.
-              Suporta PDF, JPG, PNG.
-            </p>
+
+            <input
+              type="file"
+              className="hidden"
+              id="upload"
+              accept="image/*,application/pdf"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+
+            <label
+              htmlFor="upload"
+              className="text-primary cursor-pointer text-sm underline"
+            >
+              Escolher arquivo
+            </label>
+
             <Button
-              onClick={simulateAnalysis}
-              disabled={isAnalyzing}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 mt-4 w-full"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 mt-6 w-full"
+              disabled={!file || isAnalyzing}
+              onClick={uploadAndAnalyze}
             >
               {isAnalyzing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analisando com Gemini (Server)...
+                  Analisando com Gemini...
                 </>
               ) : (
-                "Processar Conta na Nuvem"
+                "Enviar e Analisar"
               )}
             </Button>
-            {isAnalyzing && (
-              <p className="text-muted-foreground mt-4 animate-pulse text-xs">
-                Identificando padrões de consumo...
-              </p>
-            )}
           </div>
         ) : (
+          // RESULTADO DA ANÁLISE
           <div className="space-y-6">
             <div className="bg-secondary/50 border-primary/20 flex items-center justify-between rounded-lg border p-4">
               <div className="flex items-center gap-3">
@@ -126,73 +108,31 @@ export function BillAnalyzer() {
                     Análise Completa
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    Processado via Gemini API
+                    Relatório gerado automaticamente pela IA
                   </p>
                 </div>
               </div>
+
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setAnalyzedData(null)}
+                onClick={() => setAnalysisText(null)}
                 className="text-muted-foreground hover:text-foreground"
               >
                 Nova Análise
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-secondary border-border rounded-lg border p-3">
-                <div className="text-muted-foreground text-xs">Valor Total</div>
-                <div className="text-primary text-xl font-bold">
-                  R$ {analyzedData.analysis.financial.total_value.toFixed(2)}
-                </div>
-              </div>
-              <div className="bg-secondary border-border rounded-lg border p-3">
-                <div className="text-muted-foreground text-xs">Consumo</div>
-                <div className="text-foreground text-xl font-bold">
-                  {analyzedData.analysis.consumption.total_m3} m³
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="text-foreground flex items-center text-sm font-semibold">
+            <div className="bg-secondary border-border rounded-lg border p-4">
+              <h4 className="text-foreground mb-3 flex items-center text-sm font-semibold">
                 <AlertTriangle className="mr-2 h-4 w-4 text-yellow-500" />
-                Pontos de Atenção
+                Diagnóstico da conta de luz
               </h4>
-              {analyzedData.analysis.insights.map(
-                (insight: string, i: number) => (
-                  <div
-                    key={i}
-                    className="text-muted-foreground before:text-primary relative pl-6 text-sm before:absolute before:left-2 before:content-['•']"
-                  >
-                    {insight}
-                  </div>
-                ),
-              )}
-            </div>
 
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="border-border text-muted-foreground hover:text-foreground flex w-full items-center gap-2 bg-transparent"
-                >
-                  <FileJson className="h-4 w-4" />
-                  Ver Resposta JSON (Insomnia)
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-card border-border max-h-[80vh] max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle className="text-foreground">
-                    Resposta Bruta da API (JSON)
-                  </DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="border-border text-primary h-[400px] w-full rounded-md border bg-[#0E131B] p-4 font-mono text-xs">
-                  <pre>{JSON.stringify(analyzedData, null, 2)}</pre>
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
+              <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-line">
+                {analysisText}
+              </p>
+            </div>
           </div>
         )}
       </CardContent>
