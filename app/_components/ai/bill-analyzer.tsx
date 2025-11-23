@@ -9,8 +9,6 @@ import {
   Loader2,
   ScanLine,
   CheckCircle2,
-  AlertTriangle,
-  FileJson,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,19 +18,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 
-export function BillAnalyzer() {
+interface BillAnalyzerProps {
+  onAnalysisComplete?: (data: any) => void;
+  onAnalyzingChange?: (isAnalyzing: boolean) => void;
+}
+
+export function BillAnalyzer({ onAnalysisComplete, onAnalyzingChange }: BillAnalyzerProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyzedData, setAnalyzedData] = useState<any>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -44,30 +41,62 @@ export function BillAnalyzer() {
     }
   };
 
-  const simulateAnalysis = async () => {
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setSelectedFile(e.dataTransfer.files[0]);
+      setIsSuccess(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+      setIsSuccess(false);
+    }
+  };
+
+  const analyzeBill = async () => {
+    if (!selectedFile) return;
+
     setIsAnalyzing(true);
+    if (onAnalyzingChange) onAnalyzingChange(true);
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
 
     try {
-      // Calling our internal API route
       const response = await fetch("/api/analyze", {
         method: "POST",
+        body: formData,
       });
 
       const data = await response.json();
 
-      setAnalyzedData(data);
+      if (data.error) {
+        console.error("Erro na API:", data.error);
+        // You might want to show a toast here
+      } else {
+        setIsSuccess(true);
+        if (onAnalysisComplete) {
+          onAnalysisComplete(data);
+        }
+      }
     } catch (error) {
       console.error("Erro na análise:", error);
     } finally {
       setIsAnalyzing(false);
+      if (onAnalyzingChange) onAnalyzingChange(false);
     }
   };
 
   return (
-    <Card className="border-border bg-card h-full overflow-hidden">
-      <CardHeader className="bg-secondary border-border border-b">
-        <CardTitle className="text-foreground flex items-center gap-2">
-          <ScanLine className="text-primary h-5 w-5" />
+    <Card className="border-border bg-card h-full overflow-hidden shadow-lg transition-all hover:shadow-xl">
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-border border-b">
+        <CardTitle className="text-foreground flex items-center gap-2 text-xl">
+          <ScanLine className="text-primary h-6 w-6" />
           EcoWater AI
         </CardTitle>
         <CardDescription className="text-muted-foreground">
@@ -75,124 +104,91 @@ export function BillAnalyzer() {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
-        {!analyzedData ? (
+        {!isSuccess ? (
           <div
-            className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors ${dragActive ? "border-primary bg-secondary/50" : "border-border hover:border-primary/50 bg-secondary/20"} `}
+            className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-all duration-300 ${dragActive ? "border-primary bg-primary/5 scale-[1.02]" : "border-border hover:border-primary/50 bg-secondary/20"} `}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
-            onDrop={(e) => {
-              handleDrag(e);
-              simulateAnalysis();
-            }}
+            onDrop={handleDrop}
           >
-            <div className="bg-secondary border-border mb-4 rounded-full border p-4">
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              accept="image/*,application/pdf"
+              onChange={handleFileChange}
+            />
+
+            <div className="bg-secondary border-border mb-4 rounded-full border p-4 shadow-sm">
               <Upload className="text-primary h-8 w-8" />
             </div>
             <h3 className="text-foreground mb-1 text-lg font-semibold">
-              Upload da Conta
+              {selectedFile ? selectedFile.name : "Upload da Conta"}
             </h3>
             <p className="text-muted-foreground mb-6 max-w-xs text-sm">
-              Arraste sua conta de água ou luz aqui, ou clique para selecionar.
-              Suporta PDF, JPG, PNG.
+              {selectedFile
+                ? "Arquivo selecionado. Clique abaixo para processar."
+                : "Arraste sua conta de água ou luz aqui, ou clique para selecionar."}
             </p>
-            <Button
-              onClick={simulateAnalysis}
-              disabled={isAnalyzing}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 mt-4 w-full"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analisando com Gemini (Server)...
-                </>
-              ) : (
-                "Processar Conta na Nuvem"
-              )}
-            </Button>
+
+            {!selectedFile ? (
+              <Button
+                variant="outline"
+                onClick={() => document.getElementById("file-upload")?.click()}
+                className="w-full max-w-xs"
+              >
+                Selecionar Arquivo
+              </Button>
+            ) : (
+              <Button
+                onClick={analyzeBill}
+                disabled={isAnalyzing}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2 w-full max-w-xs shadow-md transition-all hover:scale-105"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analisando com Gemini...
+                  </>
+                ) : (
+                  "Processar Conta na Nuvem"
+                )}
+              </Button>
+            )}
+
             {isAnalyzing && (
-              <p className="text-muted-foreground mt-4 animate-pulse text-xs">
-                Identificando padrões de consumo...
-              </p>
+              <div className="mt-6 w-full max-w-xs space-y-2">
+                <Progress value={45} className="h-2" />
+                <p className="text-muted-foreground animate-pulse text-xs">
+                  Identificando padrões de consumo...
+                </p>
+              </div>
             )}
           </div>
         ) : (
-          <div className="space-y-6">
-            <div className="bg-secondary/50 border-primary/20 flex items-center justify-between rounded-lg border p-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="text-primary h-6 w-6" />
-                <div>
-                  <p className="text-foreground font-semibold">
-                    Análise Completa
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    Processado via Gemini API
-                  </p>
-                </div>
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-900 flex flex-col items-center justify-center rounded-lg border p-8 text-center">
+              <div className="bg-green-100 dark:bg-green-900/30 mb-4 rounded-full p-4">
+                <CheckCircle2 className="text-green-600 dark:text-green-400 h-8 w-8" />
               </div>
+              <h3 className="text-foreground mb-2 text-xl font-semibold">
+                Análise Concluída!
+              </h3>
+              <p className="text-muted-foreground mb-6 max-w-xs text-sm">
+                Os dados da sua conta foram processados com sucesso. Confira os insights ao lado.
+              </p>
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setAnalyzedData(null)}
-                className="text-muted-foreground hover:text-foreground"
+                variant="outline"
+                onClick={() => {
+                  setIsSuccess(false);
+                  setSelectedFile(null);
+                  if (onAnalysisComplete) onAnalysisComplete(null);
+                }}
               >
                 Nova Análise
               </Button>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-secondary border-border rounded-lg border p-3">
-                <div className="text-muted-foreground text-xs">Valor Total</div>
-                <div className="text-primary text-xl font-bold">
-                  R$ {analyzedData.analysis.financial.total_value.toFixed(2)}
-                </div>
-              </div>
-              <div className="bg-secondary border-border rounded-lg border p-3">
-                <div className="text-muted-foreground text-xs">Consumo</div>
-                <div className="text-foreground text-xl font-bold">
-                  {analyzedData.analysis.consumption.total_m3} m³
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h4 className="text-foreground flex items-center text-sm font-semibold">
-                <AlertTriangle className="mr-2 h-4 w-4 text-yellow-500" />
-                Pontos de Atenção
-              </h4>
-              {analyzedData.analysis.insights.map(
-                (insight: string, i: number) => (
-                  <div
-                    key={i}
-                    className="text-muted-foreground before:text-primary relative pl-6 text-sm before:absolute before:left-2 before:content-['•']"
-                  >
-                    {insight}
-                  </div>
-                ),
-              )}
-            </div>
-
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="border-border text-muted-foreground hover:text-foreground flex w-full items-center gap-2 bg-transparent"
-                >
-                  <FileJson className="h-4 w-4" />
-                  Ver Resposta JSON (Insomnia)
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-card border-border max-h-[80vh] max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle className="text-foreground">
-                    Resposta Bruta da API (JSON)
-                  </DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="border-border text-primary h-[400px] w-full rounded-md border bg-[#0E131B] p-4 font-mono text-xs">
-                  <pre>{JSON.stringify(analyzedData, null, 2)}</pre>
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
           </div>
         )}
       </CardContent>
