@@ -1,0 +1,238 @@
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { BathTimer } from "../_components/tools/bath-timer";
+import { BillAnalyzer } from "../_components/ai/bill-analyzer";
+import { ConsumptionCalculator } from "../_components/calculators/consumption-calculator";
+import { LeakCalculator } from "../_components/calculators/leak-calculator";
+import { Droplet, Zap } from "lucide-react";
+
+export default function Dashboard() {
+  return (
+    <div className="mx-auto max-w-6xl space-y-8">
+      <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <h2 className="text-foreground text-3xl font-bold tracking-tight">
+            Painel de Controle
+          </h2>
+          <p className="text-muted-foreground">
+            Bem-vindo ao Água Inteligente. Vamos economizar hoje?
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Badge
+            variant="default"
+            className="bg-secondary text-primary hover:bg-secondary/80 border-border border px-3 py-1 text-sm font-medium"
+          >
+            <Droplet className="mr-2 h-4 w-4" />
+            Economia Estimada: R$ 45,00
+          </Badge>
+        </div>
+      </div>
+
+      <Tabs defaultValue="ai" className="space-y-6">
+        <TabsList className="bg-card border-border text-muted-foreground grid h-auto w-full grid-cols-2 border p-1 md:grid-cols-4">
+          <TabsTrigger
+            value="ai"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-primary py-3"
+          >
+            I.A Analysis
+          </TabsTrigger>
+          <TabsTrigger
+            value="timer"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-primary py-3"
+          >
+            Banho Inteligente
+          </TabsTrigger>
+          <TabsTrigger
+            value="calc"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-primary py-3"
+          >
+            Calculadoras
+          </TabsTrigger>
+          <TabsTrigger
+            value="guide"
+            className="data-[state=active]:bg-secondary data-[state=active]:text-primary py-3"
+          >
+            Guia & Dicas
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ai" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-12">
+            <div className="md:col-span-5 lg:col-span-4">
+              <BillAnalyzer />
+            </div>
+            <div className="grid gap-4 md:col-span-7 lg:col-span-8">
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle className="text-foreground flex items-center">
+                    <Zap className="text-primary mr-2 h-5 w-5" />
+                    Insights do Gemini
+                  </CardTitle>
+                  <CardDescription>
+                    Análise automática da sua conta
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-secondary/50 border-border rounded-lg border p-4">
+                      <h4 className="text-primary mb-2 font-medium">
+                        Resumo da Análise
+                      </h4>
+                      <p className="text-muted-foreground text-sm leading-relaxed">
+                        Faça o upload da sua conta ao lado para que a I.A possa
+                        identificar padrões de consumo e sugerir melhorias. O
+                        sistema irá ler o QR Code ou os dados da imagem.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-secondary/30 border-border rounded-lg border p-4">
+                        <div className="text-muted-foreground text-xs tracking-wider uppercase">
+                          Consumo Atual
+                        </div>
+                        <div className="text-foreground mt-1 text-2xl font-bold">
+                          -- m³
+                        </div>
+                      </div>
+                      <div className="bg-secondary/30 border-border rounded-lg border p-4">
+                        <div className="text-muted-foreground text-xs tracking-wider uppercase">
+                          Meta Ideal
+                        </div>
+                        <div className="text-primary mt-1 text-2xl font-bold">
+                          -- m³
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="timer" className="space-y-4">
+          <div className="grid gap-6 md:grid-cols-2">
+            <BathTimer />
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle>Estatísticas do Banho</CardTitle>
+                <CardDescription>Seu histórico recente</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="border-border flex items-center justify-between border-b pb-4">
+                    <div>
+                      <p className="font-medium">Média da Semana</p>
+                      <p className="text-muted-foreground text-sm">
+                        Tempo médio
+                      </p>
+                    </div>
+                    <span className="text-foreground text-2xl font-bold">
+                      8:45
+                    </span>
+                  </div>
+                  <div className="border-border flex items-center justify-between border-b pb-4">
+                    <div>
+                      <p className="font-medium">Economia Estimada</p>
+                      <p className="text-muted-foreground text-sm">Em litros</p>
+                    </div>
+                    <span className="text-primary text-2xl font-bold">
+                      120 L
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="calc" className="space-y-4">
+          <div className="grid gap-6 md:grid-cols-2">
+            <ConsumptionCalculator />
+            <LeakCalculator />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="guide" className="space-y-4">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle>Soluções Baratas</CardTitle>
+              <CardDescription>
+                Guia interativo para economizar sem gastar muito
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                {
+                  title: "Redutor de Vazão",
+                  cost: "R$ 15,00",
+                  save: "20%",
+                  icon: "💧",
+                },
+                {
+                  title: "Arejador de Torneira",
+                  cost: "R$ 10,00",
+                  save: "15%",
+                  icon: "🚿",
+                },
+                {
+                  title: "Garrafa na Caixa",
+                  cost: "R$ 0,00",
+                  save: "1.5L/descarga",
+                  icon: "🚽",
+                },
+                {
+                  title: "Reuso da Máquina",
+                  cost: "R$ 20,00",
+                  save: "40L/lavagem",
+                  icon: "🧺",
+                },
+                {
+                  title: "Verificação de Vazamento",
+                  cost: "R$ 0,00",
+                  save: "Variável",
+                  icon: "🔍",
+                },
+                {
+                  title: "Coleta de Chuva",
+                  cost: "R$ 50,00",
+                  save: "Jardim",
+                  icon: "🌧️",
+                },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="border-border bg-secondary/20 hover:border-primary hover:bg-secondary/40 flex cursor-pointer flex-col rounded-lg border p-4 transition-colors"
+                >
+                  <div className="mb-3 text-3xl">{item.icon}</div>
+                  <h3 className="text-foreground font-semibold">
+                    {item.title}
+                  </h3>
+                  <div className="mt-auto flex justify-between pt-4 text-sm">
+                    <span className="text-muted-foreground">
+                      Custo:{" "}
+                      <span className="text-foreground font-medium">
+                        {item.cost}
+                      </span>
+                    </span>
+                    <span className="text-primary font-medium">
+                      {item.save}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
