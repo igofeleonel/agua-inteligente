@@ -1,16 +1,12 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
-import { QrReader } from "react-qr-reader";
-import {
-  ScanLine,
-  Loader2,
-  CheckCircle2,
-  AlertTriangle,
-  Camera,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Html5QrcodeScanner } from "html5-qrcode";
+
+import { ScanLine, CheckCircle2, AlertTriangle, Camera } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +33,7 @@ export function BillAnalyzer({
   const [isSuccess, setIsSuccess] = useState(false);
   const [analysisText, setAnalysisText] = useState<string | null>(null);
 
+  /** 🔥 API GEMINI */
   const analyzeQRCode = async (content: string) => {
     setIsAnalyzing(true);
     onAnalyzingChange?.(true);
@@ -45,29 +42,54 @@ export function BillAnalyzer({
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrText: content }), // ✔️ CORRIGIDO
+        body: JSON.stringify({ qrText: content }),
       });
 
       const data = await response.json();
 
-      if (data.error) {
-        console.error("Erro da API:", data.error);
-      } else {
+      if (!data.error) {
         setIsSuccess(true);
-
-        if (data.summary) {
-          setAnalysisText(data.summary);
-        }
-
+        setAnalysisText(data.summary);
         onAnalysisComplete?.(data);
       }
-    } catch (error) {
-      console.error("Erro:", error);
+    } catch (e) {
+      console.error("Erro ao analisar QRCode:", e);
     } finally {
       setIsAnalyzing(false);
       onAnalyzingChange?.(false);
     }
   };
+
+  /** 🚀 Scanner idêntico ao demo oficial */
+  useEffect(() => {
+    if (!isScanning) return;
+
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader",
+      {
+        fps: 10,
+        qrbox: 250,
+      },
+      false,
+    );
+
+    function onScanSuccess(decodedText: string) {
+      scanner.clear();
+      setQrText(decodedText);
+      setIsScanning(false);
+      analyzeQRCode(decodedText);
+    }
+
+    function onScanFailure(error: any) {
+      // pode ignorar, apenas necessário para o .render()
+    }
+
+    scanner.render(onScanSuccess, onScanFailure);
+
+    return () => {
+      scanner?.clear().catch(() => {});
+    };
+  }, [isScanning]);
 
   return (
     <Card className="border-border bg-card h-full overflow-hidden shadow-lg transition-all hover:shadow-xl">
@@ -94,7 +116,7 @@ export function BillAnalyzer({
                       Ler QR Code da Conta
                     </h3>
                     <p className="text-muted-foreground mb-4 max-w-xs text-sm">
-                      Aponte a câmera para o QR Code da conta de água ou luz.
+                      Aponte a câmera para o QR Code da conta de água.
                     </p>
 
                     <Button
@@ -106,19 +128,7 @@ export function BillAnalyzer({
                   </>
                 ) : (
                   <div className="w-full">
-                    <QrReader
-                      constraints={{ facingMode: "environment" }}
-                      onResult={(result) => {
-                        if (result) {
-                          const text = result.getText();
-                          setQrText(text);
-                          setIsScanning(false);
-                          analyzeQRCode(text);
-                        }
-                      }}
-                      containerStyle={{ width: "100%" }}
-                      videoStyle={{ width: "100%" }}
-                    />
+                    <div id="qr-reader" className="w-full" />
 
                     <Button
                       variant="outline"
