@@ -4,36 +4,99 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
 
-// ---- TARIFAS SANEPAR (2024 - atualizadas) ----
-// Tabela real simplificada (Residencial Social/Comum)
-// Fonte: https://www.sanepar.com.br/tarifas
+// ---- TARIFAS SANEPAR ----
 function calcularTarifaSanepar(consumoM3: number) {
   if (consumoM3 <= 5) return 61.08;
   if (consumoM3 <= 10) return 84.33;
   if (consumoM3 <= 15) return 132.83;
   if (consumoM3 <= 20) return 184.63;
   if (consumoM3 <= 30) return 289.85;
-  return 289.85 + (consumoM3 - 30) * 14.49; // Faixa extra
+  return 289.85 + (consumoM3 - 30) * 14.49;
 }
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
+    const contentType = req.headers.get("content-type") || "";
 
-    if (!file) {
-      return NextResponse.json(
-        { error: "Nenhum arquivo enviado." },
-        { status: 400 },
-      );
+    let qrText = null;
+    let file: File | null = null;
+
+    // ---- JSON (QR CODE) ----
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      qrText = body.qrText || null;
+
+      if (!qrText) {
+        return NextResponse.json(
+          { error: "QR Code inválido ou vazio." },
+          { status: 400 },
+        );
+      }
+    }
+
+    // ---- FORM DATA (UPLOAD) ----
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await req.formData();
+      file = formData.get("file") as File | null;
+
+      if (!file) {
+        return NextResponse.json(
+          { error: "Nenhum arquivo enviado." },
+          { status: 400 },
+        );
+      }
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
     });
 
-    const bytes = Buffer.from(await file.arrayBuffer());
+    // -----------------------------------------------------
+    // 1) Se veio QR CODE → manda o texto diretamente para o Gemini
+    // -----------------------------------------------------
+    if (qrText) {
+      const prompt = `
+O texto a seguir veio de um QR CODE de conta de água ou luz.
+
+Texto do QR:
+${qrText}
+
+INTERPRETE ESSE QR CODE E RETORNE APENAS JSON:
+
+{
+  "summary": "",
+  "financial": {
+    "total_value": 0,
+    "due_date": "",
+    "is_value_high": false,
+    "monthly_variation": ""
+  },
+  "consumption": {
+    "total_m3": 0,
+    "status": "",
+    "is_above_expected": false,
+    "comparison": ""
+  },
+  "tips": [],
+  "waste_points": [],
+  "estimated_saving": ""
+}
+`;
+
+      const result = await model.generateContent(prompt);
+
+      const clean = result.response.text().replace(/```json|```/g, "");
+      const data = JSON.parse(clean);
+
+      return NextResponse.json(data);
+    }
+
+    // -----------------------------------------------------
+    // 2) Se veio arquivo → processar imagem normalmente
+    // -----------------------------------------------------
+    const buffer = Buffer.from(await file!.arrayBuffer());
 
     const prompt = `
 Analise esta conta de água/luz da imagem enviada.
@@ -54,18 +117,11 @@ RETORNE APENAS JSON PURO com o formato:
     "is_above_expected": false,
     "comparison": ""
   },
-  "appliances": [],
-  "waste_points": [],
   "tips": [],
+  "waste_points": [],
   "estimated_saving": ""
 }
-
-Regras para as dicas:
-- 4 a 6 dicas de economia da SANEPAR (ÁGUA)
-- 1 a 2 dicas da COPEL (ENERGIA)
-- Linguagem simples e prática
-- Não use markdown
-    `;
+`;
 
     const result = await model.generateContent({
       contents: [
@@ -74,8 +130,8 @@ Regras para as dicas:
           parts: [
             {
               inlineData: {
-                data: bytes.toString("base64"),
-                mimeType: file.type || "image/jpeg",
+                data: buffer.toString("base64"),
+                mimeType: file!.type || "image/jpeg",
               },
             },
             { text: prompt },
@@ -84,50 +140,10 @@ Regras para as dicas:
       ],
     });
 
-    let text = result.response.text().trim();
+    const clean = result.response.text().replace(/```json|```/g, "");
+    const data = JSON.parse(clean);
 
-    // Remove markdown
-    text = text.replace(/```json/gi, "");
-    text = text.replace(/```/g, "");
-    text = text.replace(/`/g, "").trim();
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      console.error("JSON INVÁLIDO:", text);
-      return NextResponse.json(
-        { error: "A IA retornou JSON inválido", raw: text },
-        { status: 500 },
-      );
-    }
-
-    // ---- Cálculo de tarifa SANEPAR baseado no consumo ----
-    const consumo = Number(data.consumption.total_m3 || 0);
-    const tarifaCalculada = calcularTarifaSanepar(consumo);
-
-    // ---- GERAR AÇÕES RECOMENDADAS ----
-    const acoesRecomendadas = [
-      `Sua tarifa estimada conforme a SANEPAR é: R$ ${tarifaCalculada.toFixed(
-        2,
-      )}`,
-      `Veja todas as tarifas da SANEPAR: https://www.sanepar.com.br/tarifas`,
-      "Reveja pontos de desperdício identificados na conta.",
-      "Acompanhe semanalmente o hidrômetro para evitar surpresas.",
-      "Considere instalar arejadores ou redutores de vazão.",
-    ];
-
-    // ------ Retorno final (sem JSON bruto) ------
-    return NextResponse.json({
-      summary: data.summary,
-      financial: data.financial,
-      consumption: data.consumption,
-      tips: data.tips,
-      waste_points: data.waste_points,
-      estimated_saving: data.estimated_saving,
-      acoes_recomendadas: acoesRecomendadas,
-      tarifa_sanepar: tarifaCalculada,
-    });
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Erro geral:", error);
     return NextResponse.json(
