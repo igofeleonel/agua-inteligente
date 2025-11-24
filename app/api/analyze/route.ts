@@ -1,8 +1,20 @@
-/* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
+
+// ---- TARIFAS SANEPAR (2024 - atualizadas) ----
+// Tabela real simplificada (Residencial Social/Comum)
+// Fonte: https://www.sanepar.com.br/tarifas
+function calcularTarifaSanepar(consumoM3: number) {
+  if (consumoM3 <= 5) return 61.08;
+  if (consumoM3 <= 10) return 84.33;
+  if (consumoM3 <= 15) return 132.83;
+  if (consumoM3 <= 20) return 184.63;
+  if (consumoM3 <= 30) return 289.85;
+  return 289.85 + (consumoM3 - 30) * 14.49; // Faixa extra
+}
 
 export async function POST(req: Request) {
   try {
@@ -16,9 +28,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Conectar ao Gemini 2.0 (versão grátis)
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
     });
@@ -26,9 +36,9 @@ export async function POST(req: Request) {
     const bytes = Buffer.from(await file.arrayBuffer());
 
     const prompt = `
-Você é um especialista em análise de contas de energia elétrica.
+Analise esta conta de água/luz da imagem enviada.
 
-Analise cuidadosamente a conta enviada e retorne um JSON EXATAMENTE neste formato:
+RETORNE APENAS JSON PURO com o formato:
 
 {
   "summary": "",
@@ -39,14 +49,10 @@ Analise cuidadosamente a conta enviada e retorne um JSON EXATAMENTE neste format
     "monthly_variation": ""
   },
   "consumption": {
-    "total_kwh": 0,
+    "total_m3": 0,
     "status": "",
     "is_above_expected": false,
     "comparison": ""
-  },
-  "tariff": {
-    "flag": "",
-    "description": ""
   },
   "appliances": [],
   "waste_points": [],
@@ -54,12 +60,12 @@ Analise cuidadosamente a conta enviada e retorne um JSON EXATAMENTE neste format
   "estimated_saving": ""
 }
 
-Regras:
-- Retorne APENAS o JSON.
-- Sem markdown.
-- Sem explicações.
-- Se faltar dados, coloque null ou "".
-`;
+Regras para as dicas:
+- 4 a 6 dicas de economia da SANEPAR (ÁGUA)
+- 1 a 2 dicas da COPEL (ENERGIA)
+- Linguagem simples e prática
+- Não use markdown
+    `;
 
     const result = await model.generateContent({
       contents: [
@@ -69,7 +75,7 @@ Regras:
             {
               inlineData: {
                 data: bytes.toString("base64"),
-                mimeType: file.type,
+                mimeType: file.type || "image/jpeg",
               },
             },
             { text: prompt },
@@ -78,32 +84,50 @@ Regras:
       ],
     });
 
-    let text = result.response.text();
+    let text = result.response.text().trim();
 
-    const cleaned = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
+    // Remove markdown
+    text = text.replace(/```json/gi, "");
+    text = text.replace(/```/g, "");
+    text = text.replace(/`/g, "").trim();
 
-    let analysis;
-
+    let data;
     try {
-      analysis = JSON.parse(cleaned);
-    } catch (error) {
-      console.error("Erro ao parsear JSON:", error);
-      analysis = {
-        summary: "Não foi possível analisar a conta automaticamente.",
-        financial: {},
-        consumption: {},
-        tariff: {},
-        appliances: [],
-        waste_points: [],
-        tips: [],
-        estimated_saving: "",
-      };
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("JSON INVÁLIDO:", text);
+      return NextResponse.json(
+        { error: "A IA retornou JSON inválido", raw: text },
+        { status: 500 },
+      );
     }
 
-    return NextResponse.json({ analysis });
+    // ---- Cálculo de tarifa SANEPAR baseado no consumo ----
+    const consumo = Number(data.consumption.total_m3 || 0);
+    const tarifaCalculada = calcularTarifaSanepar(consumo);
+
+    // ---- GERAR AÇÕES RECOMENDADAS ----
+    const acoesRecomendadas = [
+      `Sua tarifa estimada conforme a SANEPAR é: R$ ${tarifaCalculada.toFixed(
+        2,
+      )}`,
+      `Veja todas as tarifas da SANEPAR: https://www.sanepar.com.br/tarifas`,
+      "Reveja pontos de desperdício identificados na conta.",
+      "Acompanhe semanalmente o hidrômetro para evitar surpresas.",
+      "Considere instalar arejadores ou redutores de vazão.",
+    ];
+
+    // ------ Retorno final (sem JSON bruto) ------
+    return NextResponse.json({
+      summary: data.summary,
+      financial: data.financial,
+      consumption: data.consumption,
+      tips: data.tips,
+      waste_points: data.waste_points,
+      estimated_saving: data.estimated_saving,
+      acoes_recomendadas: acoesRecomendadas,
+      tarifa_sanepar: tarifaCalculada,
+    });
   } catch (error) {
     console.error("Erro geral:", error);
     return NextResponse.json(
