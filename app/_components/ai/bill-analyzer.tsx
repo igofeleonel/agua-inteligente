@@ -45,18 +45,18 @@ export function BillAnalyzer({
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrcode: content }),
+        body: JSON.stringify({ qrText: content }), // ✔️ CORRIGIDO
       });
 
       const data = await response.json();
 
       if (data.error) {
-        console.error("Erro na API:", data.error);
+        console.error("Erro da API:", data.error);
       } else {
         setIsSuccess(true);
 
-        if (data.analysis?.summary) {
-          setAnalysisText(data.analysis.summary);
+        if (data.summary) {
+          setAnalysisText(data.summary);
         }
 
         onAnalysisComplete?.(data);

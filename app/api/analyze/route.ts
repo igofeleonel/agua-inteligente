@@ -24,6 +24,8 @@ export async function POST(req: Request) {
     // ---- JSON (QR CODE) ----
     if (contentType.includes("application/json")) {
       const body = await req.json();
+
+      // 🔧 CORREÇÃO — AGORA LÊ CORRETAMENTE O QR CODE DO FRONTEND
       qrText = body.qrText || null;
 
       if (!qrText) {
@@ -34,7 +36,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // ---- FORM DATA (UPLOAD) ----
+    // ---- FORM DATA (UPLOAD IMAGEM) ----
     if (contentType.includes("multipart/form-data")) {
       const formData = await req.formData();
       file = formData.get("file") as File | null;
@@ -48,45 +50,73 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
     });
 
     // -----------------------------------------------------
-    // 1) Se veio QR CODE → manda o texto diretamente para o Gemini
+    // 1) PROCESSAR QR CODE
     // -----------------------------------------------------
     if (qrText) {
       const prompt = `
-O texto a seguir veio de um QR CODE de conta de água ou luz.
+Você agora é um **técnico especialista da Sanepar**, responsável por orientar clientes sobre:
+- Redução de consumo de água,
+- Identificação de desperdícios,
+- Aproveitamento correto das tarifas da Sanepar,
+- Como alcançar redução mínima de **40% do valor da conta**.
 
-Texto do QR:
+Use este texto do QR Code como dados oficiais:
 ${qrText}
 
-INTERPRETE ESSE QR CODE E RETORNE APENAS JSON:
+Use também as tarifas reais da Sanepar:
+- Até 5 m³ → R$ 52,33/m³
+- 6 a 10 m³ → R$ 1,62/m³
+- 11 a 15 m³ → R$ 9,02/m³
+- 16 a 20 m³ → R$ 9,06/m³
+- 21 a 30 m³ → R$ 9,14/m³
+- Acima de 30 m³ → R$ 15,46/m³
+
+Agora gere APENAS JSON PURO neste formato:
 
 {
   "summary": "",
-  "financial": {
-    "total_value": 0,
-    "due_date": "",
-    "is_value_high": false,
-    "monthly_variation": ""
-  },
   "consumption": {
-    "total_m3": 0,
-    "status": "",
-    "is_above_expected": false,
-    "comparison": ""
+    "current_m3": 0,
+    "recommended_m3": 0,
+    "saving_m3": 0
   },
-  "tips": [],
-  "waste_points": [],
-  "estimated_saving": ""
+  "financial": {
+    "current_cost": 0,
+    "recommended_cost": 0,
+    "monthly_saving": 0,
+    "saving_percentage": 0
+  },
+  "recommended_actions": [
+    {
+      "title": "",
+      "description": "",
+      "why_it_matters": "",
+      "estimated_saving_m3": 0,
+      "estimated_saving_cost": 0
+    }
+  ],
+  "tips": []
 }
+
+As recomendações devem seguir os padrões técnicos da Sanepar:
+- Teste de vazamento no vaso sanitário,
+- Vazamentos silenciosos,
+- Verificação do hidrômetro,
+- Tempo de banho,
+- Fechamento de torneiras,
+- Reaproveitamento de água,
+- Manutenção de válvulas e registros,
+- Ajuste de boias e caixas de descarga.
+
+A economia estimada deve buscar pelo menos **40%** do valor atual da conta.
 `;
 
       const result = await model.generateContent(prompt);
-
       const clean = result.response.text().replace(/```json|```/g, "");
       const data = JSON.parse(clean);
 
@@ -94,14 +124,14 @@ INTERPRETE ESSE QR CODE E RETORNE APENAS JSON:
     }
 
     // -----------------------------------------------------
-    // 2) Se veio arquivo → processar imagem normalmente
+    // 2) PROCESSAR IMAGEM (UPLOAD)
     // -----------------------------------------------------
     const buffer = Buffer.from(await file!.arrayBuffer());
 
     const prompt = `
-Analise esta conta de água/luz da imagem enviada.
+Analise esta imagem de conta de água de acordo com os padrões técnicos da Sanepar.
 
-RETORNE APENAS JSON PURO com o formato:
+RETORNE APENAS JSON PURO:
 
 {
   "summary": "",
@@ -117,8 +147,16 @@ RETORNE APENAS JSON PURO com o formato:
     "is_above_expected": false,
     "comparison": ""
   },
+  "recommended_actions": [
+    {
+      "title": "",
+      "description": "",
+      "why_it_matters": "",
+      "estimated_saving_m3": 0,
+      "estimated_saving_cost": 0
+    }
+  ],
   "tips": [],
-  "waste_points": [],
   "estimated_saving": ""
 }
 `;
