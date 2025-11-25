@@ -21,7 +21,10 @@ export async function POST(req: Request) {
     // ------------------- PROMPT PRINCIPAL -------------------
     const prompt = `
 Você é uma IA especialista em análise de contas de água e energia. 
-O usuário enviou um texto extraído via leitura de QR Code.
+O usuário enviou um texto extraído via leitura de QR Code ou código de barras.
+
+IMPORTANTE: Mesmo que o texto seja curto, incompleto ou não tenha informações claras, você DEVE retornar um JSON válido. 
+Se não encontrar informações específicas, use valores padrão ou placeholders como "xxxxx" para indicar que não foi possível identificar.
 
 Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (SEM comentários, SEM texto fora do JSON):
 
@@ -51,27 +54,30 @@ Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (S
 
 1. "customer"
    - Extraia o número da conta ou identificador do cliente.
-   - Se não encontrar, use "Não identificado".
+   - Se não encontrar, use "xxxxx".
 
 2. "customer_full_name"
    - Extraia o NOME COMPLETO do cliente/titular da conta.
    - Procure por nomes próprios no texto (ex: "João Silva", "Maria Santos").
-   - Se não encontrar, use string vazia "".
+   - Se não encontrar, use "xxxxx" para indicar que não foi identificado.
 
 3. "institution"
    - Identifique a instituição/empresa fornecedora (ex: "Sanepar", "Copel", "Cemig", "Sabesp", "AES Eletropaulo").
    - Procure por nomes de empresas de água e energia no texto.
-   - Se não encontrar, use string vazia "".
+   - Se não encontrar mas o texto parecer ser de conta de água, use "Sanepar" ou "Fornecedor de Água".
+   - Se não encontrar mas o texto parecer ser de conta de energia, use "Copel" ou "Fornecedor de Energia".
+   - Se realmente não conseguir identificar, use "xxxxx".
 
 4. "month"
    - Extraia o mês/ano de referência da conta (ex: "Janeiro 2024", "01/2024").
-   - Se não encontrar, use o formato "Mês/Ano não identificado".
+   - Se não encontrar, use "xxxxx".
 
 5. "summary"
    - Crie um resumo claro e objetivo sobre a situação da conta.
    - Explique em 3–6 linhas.
    - Inclua informações sobre consumo, valor e situação geral.
    - Seja específico e útil para o usuário.
+   - Se o texto do QR code não tiver informações suficientes, crie um resumo genérico mencionando que as informações não foram completamente identificadas.
 
 6. "consumption"
    - "total_m3": Valor numérico do consumo de água em m³ (ou null se não houver).

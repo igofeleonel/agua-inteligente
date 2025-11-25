@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -40,6 +40,13 @@ import { Button } from "@/components/ui/button";
 export default function Dashboard() {
   const [analyzedData, setAnalyzedData] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Debug: log quando analyzedData mudar
+  useEffect(() => {
+    if (analyzedData) {
+      console.log("Dashboard recebeu analyzedData:", analyzedData);
+    }
+  }, [analyzedData]);
 
   // --------- CORREÇÃO PRINCIPAL ----------
   const totalValue = analyzedData?.analysis?.financial?.total_value ?? 0;
@@ -173,55 +180,62 @@ export default function Dashboard() {
                 </CardHeader>
 
                 <CardContent>
-                  {/* Informações do Cliente e Instituição */}
-                  {analyzedData &&
-                    (analyzedData.analysis?.customer_full_name ||
-                      analyzedData.analysis?.institution ||
-                      analyzedData.analysis?.customer) && (
-                      <div className="bg-secondary/30 border-border mb-6 rounded-lg border p-4">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          {analyzedData.analysis?.customer_full_name && (
-                            <div className="flex items-center gap-2">
-                              <User className="text-primary h-4 w-4" />
-                              <div>
-                                <div className="text-muted-foreground text-xs">
-                                  Cliente
-                                </div>
-                                <div className="text-foreground text-sm font-medium">
-                                  {analyzedData.analysis.customer_full_name}
-                                </div>
-                              </div>
+                  {/* Informações do Cliente e Instituição - SEMPRE mostra quando há analyzedData */}
+                  {analyzedData && (
+                    <div className="bg-secondary/30 border-border mb-6 rounded-lg border p-4">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="flex items-center gap-2">
+                          <User className="text-primary h-4 w-4" />
+                          <div>
+                            <div className="text-muted-foreground text-xs">
+                              Cliente
                             </div>
-                          )}
-                          {analyzedData.analysis?.institution && (
-                            <div className="flex items-center gap-2">
-                              <Building2 className="text-primary h-4 w-4" />
-                              <div>
-                                <div className="text-muted-foreground text-xs">
-                                  Instituição
-                                </div>
-                                <div className="text-foreground text-sm font-medium">
-                                  {analyzedData.analysis.institution}
-                                </div>
-                              </div>
+                            <div className="text-foreground text-sm font-medium">
+                              {analyzedData.analysis?.customer_full_name ||
+                                analyzedData.analysis?.customer ||
+                                "xxxxx"}
                             </div>
-                          )}
-                          {analyzedData.analysis?.customer &&
-                            !analyzedData.analysis?.customer_full_name && (
-                              <div className="flex items-center gap-2">
-                                <div>
-                                  <div className="text-muted-foreground text-xs">
-                                    Nº da Conta
-                                  </div>
-                                  <div className="text-foreground text-sm font-medium">
-                                    {analyzedData.analysis.customer}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                          </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="text-primary h-4 w-4" />
+                          <div>
+                            <div className="text-muted-foreground text-xs">
+                              Instituição
+                            </div>
+                            <div className="text-foreground text-sm font-medium">
+                              {analyzedData.analysis?.institution || "xxxxx"}
+                            </div>
+                          </div>
+                        </div>
+                        {analyzedData.analysis?.customer &&
+                          analyzedData.analysis?.customer_full_name && (
+                            <div className="flex items-center gap-2">
+                              <div>
+                                <div className="text-muted-foreground text-xs">
+                                  Nº da Conta
+                                </div>
+                                <div className="text-foreground text-sm font-medium">
+                                  {analyzedData.analysis.customer}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        {analyzedData.analysis?.month && (
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <div className="text-muted-foreground text-xs">
+                                Período
+                              </div>
+                              <div className="text-foreground text-sm font-medium">
+                                {analyzedData.analysis.month}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                  )}
                   {isAnalyzing ? (
                     <div className="animate-pulse space-y-6">
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

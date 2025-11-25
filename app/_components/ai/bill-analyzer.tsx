@@ -112,15 +112,97 @@ export function BillAnalyzer({
       });
 
       const data = await response.json();
+      console.log("Dados recebidos da API:", data);
 
-      if (!data.error) {
+      // Sempre processa os dados, mesmo se houver erro parcial
+      if (data.error) {
+        console.error("Erro na API:", data.error);
+        // Cria estrutura padrão mesmo com erro
+        const defaultData = {
+          analysis: {
+            customer: "xxxxx",
+            customer_full_name: "xxxxx",
+            institution: "xxxxx",
+            month: "xxxxx",
+            summary:
+              "Não foi possível analisar completamente o QR code. Por favor, tente novamente ou verifique se o código está legível.",
+            consumption: {
+              total_m3: null,
+              total_kwh: null,
+              status: "MEDIUM",
+              comparison: "",
+            },
+            financial: {
+              total_value: 0,
+              due_date: "xxxxx",
+            },
+            tips: [],
+            action_items: [],
+          },
+        };
         setIsSuccess(true);
-        setAnalysisText(data.analysis?.summary || "");
-        setAnalysisData(data);
-        onAnalysisComplete?.(data);
+        setAnalysisText(defaultData.analysis.summary);
+        setAnalysisData(defaultData);
+        onAnalysisComplete?.(defaultData);
+      } else {
+        // Garante que sempre tenha estrutura válida
+        const processedData = {
+          analysis: {
+            customer: data.analysis?.customer || "xxxxx",
+            customer_full_name: data.analysis?.customer_full_name || "xxxxx",
+            institution: data.analysis?.institution || "xxxxx",
+            month: data.analysis?.month || "xxxxx",
+            summary:
+              data.analysis?.summary ||
+              "Análise realizada, mas algumas informações não foram identificadas.",
+            consumption: data.analysis?.consumption || {
+              total_m3: null,
+              total_kwh: null,
+              status: "MEDIUM",
+              comparison: "",
+            },
+            financial: data.analysis?.financial || {
+              total_value: 0,
+              due_date: "xxxxx",
+            },
+            tips: data.analysis?.tips || [],
+            action_items: data.analysis?.action_items || [],
+          },
+        };
+        setIsSuccess(true);
+        setAnalysisText(processedData.analysis.summary);
+        setAnalysisData(processedData);
+        console.log("Enviando dados para Dashboard:", processedData);
+        onAnalysisComplete?.(processedData);
       }
     } catch (e) {
       console.error("Erro ao analisar QR Code:", e);
+      // Cria dados padrão em caso de erro
+      const errorData = {
+        analysis: {
+          customer: "xxxxx",
+          customer_full_name: "xxxxx",
+          institution: "xxxxx",
+          month: "xxxxx",
+          summary: "Erro ao processar o QR code. Por favor, tente novamente.",
+          consumption: {
+            total_m3: null,
+            total_kwh: null,
+            status: "MEDIUM",
+            comparison: "",
+          },
+          financial: {
+            total_value: 0,
+            due_date: "xxxxx",
+          },
+          tips: [],
+          action_items: [],
+        },
+      };
+      setIsSuccess(true);
+      setAnalysisText(errorData.analysis.summary);
+      setAnalysisData(errorData);
+      onAnalysisComplete?.(errorData);
     }
 
     setIsAnalyzing(false);
@@ -232,38 +314,34 @@ export function BillAnalyzer({
 
             {analysisData && (
               <div className="space-y-4">
-                {/* Informações do Cliente e Instituição */}
-                {(analysisData.analysis?.customer_full_name ||
-                  analysisData.analysis?.institution ||
-                  analysisData.analysis?.customer) && (
-                  <div className="bg-secondary/50 border-border rounded-lg border p-4">
-                    <h4 className="text-foreground mb-3 flex items-center text-sm font-semibold">
-                      <User className="mr-2 h-4 w-4 text-blue-500" />
-                      Informações da Conta
-                    </h4>
-                    <div className="space-y-2">
-                      {analysisData.analysis?.customer_full_name && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground text-xs">
-                            Nome:
-                          </span>
-                          <span className="text-foreground text-sm font-medium">
-                            {analysisData.analysis.customer_full_name}
-                          </span>
-                        </div>
-                      )}
-                      {analysisData.analysis?.institution && (
-                        <div className="flex items-center gap-2">
-                          <Building2 className="text-primary h-3 w-3" />
-                          <span className="text-muted-foreground text-xs">
-                            Instituição:
-                          </span>
-                          <span className="text-foreground text-sm font-medium">
-                            {analysisData.analysis.institution}
-                          </span>
-                        </div>
-                      )}
-                      {analysisData.analysis?.customer && (
+                {/* Informações do Cliente e Instituição - SEMPRE mostra */}
+                <div className="bg-secondary/50 border-border rounded-lg border p-4">
+                  <h4 className="text-foreground mb-3 flex items-center text-sm font-semibold">
+                    <User className="mr-2 h-4 w-4 text-blue-500" />
+                    Informações da Conta
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs">
+                        Nome:
+                      </span>
+                      <span className="text-foreground text-sm font-medium">
+                        {analysisData.analysis?.customer_full_name ||
+                          analysisData.analysis?.customer ||
+                          "xxxxx"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="text-primary h-3 w-3" />
+                      <span className="text-muted-foreground text-xs">
+                        Instituição:
+                      </span>
+                      <span className="text-foreground text-sm font-medium">
+                        {analysisData.analysis?.institution || "xxxxx"}
+                      </span>
+                    </div>
+                    {analysisData.analysis?.customer &&
+                      analysisData.analysis?.customer_full_name && (
                         <div className="flex items-center gap-2">
                           <span className="text-muted-foreground text-xs">
                             Conta:
@@ -273,19 +351,16 @@ export function BillAnalyzer({
                           </span>
                         </div>
                       )}
-                      {analysisData.analysis?.month && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground text-xs">
-                            Período:
-                          </span>
-                          <span className="text-foreground text-sm">
-                            {analysisData.analysis.month}
-                          </span>
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs">
+                        Período:
+                      </span>
+                      <span className="text-foreground text-sm">
+                        {analysisData.analysis?.month || "xxxxx"}
+                      </span>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Resumo da Análise */}
                 {analysisText && (
