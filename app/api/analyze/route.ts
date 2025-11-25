@@ -1,85 +1,103 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
 
-// Inicializa Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
-});
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export async function POST(req: Request) {
   try {
-    const { qrText } = await req.json();
+    const { text } = await req.json();
 
-    if (!qrText) {
-      return NextResponse.json({ error: "QR Code vazio." }, { status: 400 });
+    if (!text) {
+      return NextResponse.json(
+        { error: "Nenhum texto enviado." },
+        { status: 400 },
+      );
     }
 
-    // -----------------------------
-    // PROMPT OTIMIZADO (PARANÁ INTEIRO)
-    // -----------------------------
+    // ------------------- PROMPT PRINCIPAL -------------------
     const prompt = `
-Você agora é um especialista técnico da SANEPAR com mais de 15 anos de experiência analisando consumo em todo o estado do Paraná.
+Você é uma IA especialista em análise de contas de água e energia. 
+O usuário enviou um texto extraído via leitura de QR Code.
 
-Use as informações extraídas do QR Code abaixo para gerar uma análise técnica:
-QR CODE LIDO:
-${qrText}
+Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (SEM comentários, SEM texto fora do JSON):
 
-Gere os seguintes resultados:
+{
+  "analysis": {
+    "customer": "",
+    "month": "",
+    "summary": "",
+    "consumption": {
+      "total_m3": 0,
+      "total_kwh": 0,
+      "status": "",
+      "comparison": ""
+    },
+    "financial": {
+      "total_value": 0,
+      "due_date": ""
+    },
+    "tips": [],
+    "action_items": []
+  }
+}
 
-### 1. RESUMO TÉCNICO
-- Diagnóstico da conta
-- Anomalias no consumo
-- Possíveis erros de leitura ou medição
+### Regras:
 
-### 2. CONSUMO ESTIMADO (m³)
-- Faixa tarifária
-- Comparação com a média do Paraná
+1. "summary"
+   - Crie um resumo claro e objetivo sobre a situação da conta.
+   - Explique em 3–6 linhas.
 
-### 3. PONTOS DE ATENÇÃO
-- Vazamentos
-- Caixa acoplada
-- Torneiras
-- Bomba hidráulica
-- Chuveiro/resistência
-- Entrada de ar no hidrômetro
+2. "tips"
+   - Gere uma lista de 5 a 10 dicas curtas para economizar.
+   - Misture dicas de água e energia.
+   - Seja direto e prático.
 
-### 4. POSSÍVEIS PROBLEMAS FUTUROS
-- Custos adicionais
-- Danos no imóvel
-- Equipamentos queimando
-- Vazamentos ocultos se agravando
+3. "action_items"
+   - Gere 3 a 5 ações de impacto real.
+   - Formato:
+     {
+       "action": "Descrição objetiva",
+       "priority": "LOW | MEDIUM | HIGH",
+       "potential_saving": "R$ X/mês"
+     }
 
-### 5. INSIGHTS (COMO REDUZIR ATÉ 50% DA CONTA)
-Baseado em orientações reais aplicadas em todo o Paraná:
-- Curitiba e região metropolitana
-- Norte, Oeste, Litoral e interior do PR
-- Técnicas oficiais de economia da SANEPAR
-- Hábitos com impacto imediato (20% a 50%)
+4. Consumptions:
+   - Detecte m³ ou kWh automaticamente com base no texto.
+   - Se não encontrar valores, coloque null.
 
-### 6. AÇÕES RECOMENDADAS
-Crie um plano dividido em:
-- Ações imediatas (0–24h)
-- Curto prazo (7 dias)
-- Longo prazo (30 dias)
-- Economia estimada em R$
+5. NUNCA envie texto fora do JSON.
+6. NUNCA invente valores absurdos. Seja coerente.
 
-Retorne tudo em formato de texto contínuo, organizado e profissional.
-`;
+Texto da conta:
+"${text}"
+    `;
+    // ---------------------------------------------------------
 
-    // Geração pelo Gemini
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const responseText = result.response.text();
 
-    return NextResponse.json({
-      summary: text,
-      insights: text,
-      actions: text,
-    });
-  } catch (error) {
-    console.error("Erro ao gerar análise no Gemini:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    let parsed;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch {
+      return NextResponse.json(
+        {
+          error: "A IA retornou uma resposta inválida.",
+          raw: responseText,
+        },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(parsed);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message ?? "Erro interno" },
+      { status: 500 },
+    );
   }
 }

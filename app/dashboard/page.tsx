@@ -199,7 +199,7 @@ export default function Dashboard() {
                           Resumo da Análise
                         </h4>
                         <p className="text-muted-foreground text-sm leading-relaxed">
-                          Faça o upload da sua conta ao lado para que a I.A
+                          Faça o QrCode da sua conta ao lado para que a I.A
                           possa identificar padrões de consumo e sugerir
                           melhorias.
                         </p>
