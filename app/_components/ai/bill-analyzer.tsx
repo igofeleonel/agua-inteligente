@@ -1,4 +1,5 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -25,14 +26,66 @@ export function BillAnalyzer({
   onAnalysisComplete,
   onAnalyzingChange,
 }: BillAnalyzerProps) {
-  const [isScanning, setIsScanning] = useState(false);
-  const [qrText, setQrText] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [decodedText, setDecodedText] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [analysisText, setAnalysisText] = useState<string | null>(null);
-  const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
-  /** 🔥 API GEMINI */
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+
+  // Evita erro de hidratação do Next.js
+  useEffect(() => setReady(true), []);
+
+  async function safelyStop() {
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      }
+    } catch (_) {}
+  }
+
+  const startScanner = async () => {
+    setCameraError(null);
+    setScanning(true);
+
+    await safelyStop();
+
+    const scanner = new Html5Qrcode("qr-reader");
+    scannerRef.current = scanner;
+
+    scanner
+      .start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        async (decoded: string) => {
+          await safelyStop();
+          setScanning(false);
+          setDecodedText(decoded);
+          analyzeQRCode(decoded);
+        },
+        () => {},
+      )
+      .catch((err: any) => {
+        console.error("Erro ao iniciar scanner:", err);
+
+        if (err?.name === "NotAllowedError") {
+          setCameraError(
+            "Permissão negada. Libere a câmera no navegador (Configurações → Privacidade → Câmera).",
+          );
+        } else if (err?.name === "NotFoundError") {
+          setCameraError("Nenhuma câmera foi encontrada neste dispositivo.");
+        } else {
+          setCameraError("Erro ao iniciar câmera: " + (err.message || err));
+        }
+
+        setScanning(false);
+      });
+  };
+
   const analyzeQRCode = async (content: string) => {
     setIsAnalyzing(true);
     onAnalyzingChange?.(true);
@@ -52,11 +105,11 @@ export function BillAnalyzer({
         onAnalysisComplete?.(data); // envia {summary, insights, actions}
       }
     } catch (e) {
-      console.error("Erro ao analisar QRCode:", e);
-    } finally {
-      setIsAnalyzing(false);
-      onAnalyzingChange?.(false);
+      console.error("Erro ao analisar QR Code:", e);
     }
+
+    setIsAnalyzing(false);
+    onAnalyzingChange?.(false);
   };
 
   /** 🚀 Scanner transparente estilo demo oficial */
@@ -71,7 +124,7 @@ export function BillAnalyzer({
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: 250,
+          qrbox: 250, // 🔥 REMOVIDO verbose (não existe nesta versão)
         },
         (decodedText) => {
           html5QrcodeRef.current
@@ -83,9 +136,7 @@ export function BillAnalyzer({
             })
             .catch(() => {});
         },
-        (error) => {
-          console.warn("QR Scan error:", error);
-        },
+        () => {}, // ignora erros
       )
       .catch((err) => {
         console.error("Erro ao iniciar scanner:", err);
@@ -112,9 +163,9 @@ export function BillAnalyzer({
       <CardContent className="p-6">
         {!isSuccess ? (
           <>
-            {!qrText ? (
+            {!decodedText ? (
               <div className="flex flex-col items-center text-center">
-                {!isScanning ? (
+                {!scanning ? (
                   <>
                     <Camera className="text-primary mb-4 h-12 w-12" />
                     <h3 className="text-foreground mb-2 text-lg font-semibold">
@@ -124,8 +175,12 @@ export function BillAnalyzer({
                       Aponte a câmera para o QR Code da conta de água.
                     </p>
 
+                    {cameraError && (
+                      <p className="mb-2 text-sm text-red-500">{cameraError}</p>
+                    )}
+
                     <Button
-                      onClick={() => setIsScanning(true)}
+                      onClick={startScanner}
                       className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
                     >
                       Iniciar Scanner
@@ -133,14 +188,12 @@ export function BillAnalyzer({
                   </>
                 ) : (
                   <div className="relative h-[400px] w-full">
-                    {/* Scanner transparente */}
                     <div
                       id="qr-reader"
-                      className="absolute top-0 left-0 h-full w-full"
-                      style={{ background: "transparent" }}
+                      className="absolute top-0 left-0 h-full w-full bg-black/20"
                     />
 
-                    {/* Overlay animado */}
+                    {/* Overlay de foco estilo demo */}
                     <div className="pointer-events-none absolute top-0 left-0 h-full w-full">
                       <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-lg border-4 border-red-500" />
                       <div className="absolute top-1/2 left-1/2 h-0.5 w-64 -translate-x-1/2 -translate-y-1/2 animate-pulse bg-red-500" />
@@ -148,8 +201,11 @@ export function BillAnalyzer({
 
                     <Button
                       variant="outline"
-                      onClick={() => setIsScanning(false)}
-                      className="mt-4"
+                      onClick={() => {
+                        safelyStop();
+                        setScanning(false);
+                      }}
+                      className="absolute bottom-4 left-1/2 -translate-x-1/2"
                     >
                       Cancelar
                     </Button>
@@ -183,7 +239,7 @@ export function BillAnalyzer({
                 variant="outline"
                 onClick={() => {
                   setIsSuccess(false);
-                  setQrText(null);
+                  setDecodedText(null);
                   setAnalysisText(null);
                   onAnalysisComplete?.(null);
                 }}
