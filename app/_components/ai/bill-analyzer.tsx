@@ -101,8 +101,8 @@ export function BillAnalyzer({
 
       if (!data.error) {
         setIsSuccess(true);
-        setAnalysisText(data.summary); // resumo geral
-        onAnalysisComplete?.(data); // envia {summary, insights, actions}
+        setAnalysisText(data.summary);
+        onAnalysisComplete?.(data);
       }
     } catch (e) {
       console.error("Erro ao analisar QR Code:", e);
@@ -112,41 +112,7 @@ export function BillAnalyzer({
     onAnalyzingChange?.(false);
   };
 
-  /** 🚀 Scanner transparente estilo demo oficial */
-  useEffect(() => {
-    if (!isScanning) return;
-
-    const qrRegionId = "qr-reader";
-    html5QrcodeRef.current = new Html5Qrcode(qrRegionId);
-
-    html5QrcodeRef.current
-      .start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: 250, // 🔥 REMOVIDO verbose (não existe nesta versão)
-        },
-        (decodedText) => {
-          html5QrcodeRef.current
-            ?.stop()
-            .then(() => {
-              setQrText(decodedText);
-              setIsScanning(false);
-              analyzeQRCode(decodedText);
-            })
-            .catch(() => {});
-        },
-        () => {}, // ignora erros
-      )
-      .catch((err) => {
-        console.error("Erro ao iniciar scanner:", err);
-        setIsScanning(false);
-      });
-
-    return () => {
-      html5QrcodeRef.current?.stop().catch(() => {});
-    };
-  }, [isScanning]);
+  if (!ready) return null;
 
   return (
     <Card className="border-border bg-card h-full overflow-hidden shadow-lg transition-all hover:shadow-xl">
@@ -193,7 +159,7 @@ export function BillAnalyzer({
                       className="absolute top-0 left-0 h-full w-full bg-black/20"
                     />
 
-                    {/* Overlay de foco estilo demo */}
+                    {/* Overlay do foco */}
                     <div className="pointer-events-none absolute top-0 left-0 h-full w-full">
                       <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-lg border-4 border-red-500" />
                       <div className="absolute top-1/2 left-1/2 h-0.5 w-64 -translate-x-1/2 -translate-y-1/2 animate-pulse bg-red-500" />
