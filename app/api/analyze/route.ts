@@ -28,12 +28,14 @@ Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (S
 {
   "analysis": {
     "customer": "",
+    "customer_full_name": "",
+    "institution": "",
     "month": "",
     "summary": "",
     "consumption": {
       "total_m3": 0,
       "total_kwh": 0,
-      "status": "",
+      "status": "LOW | MEDIUM | HIGH",
       "comparison": ""
     },
     "financial": {
@@ -45,34 +47,65 @@ Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (S
   }
 }
 
-### Regras:
+### Regras IMPORTANTES:
 
-1. "summary"
+1. "customer"
+   - Extraia o número da conta ou identificador do cliente.
+   - Se não encontrar, use "Não identificado".
+
+2. "customer_full_name"
+   - Extraia o NOME COMPLETO do cliente/titular da conta.
+   - Procure por nomes próprios no texto (ex: "João Silva", "Maria Santos").
+   - Se não encontrar, use string vazia "".
+
+3. "institution"
+   - Identifique a instituição/empresa fornecedora (ex: "Sanepar", "Copel", "Cemig", "Sabesp", "AES Eletropaulo").
+   - Procure por nomes de empresas de água e energia no texto.
+   - Se não encontrar, use string vazia "".
+
+4. "month"
+   - Extraia o mês/ano de referência da conta (ex: "Janeiro 2024", "01/2024").
+   - Se não encontrar, use o formato "Mês/Ano não identificado".
+
+5. "summary"
    - Crie um resumo claro e objetivo sobre a situação da conta.
    - Explique em 3–6 linhas.
+   - Inclua informações sobre consumo, valor e situação geral.
+   - Seja específico e útil para o usuário.
 
-2. "tips"
+6. "consumption"
+   - "total_m3": Valor numérico do consumo de água em m³ (ou null se não houver).
+   - "total_kwh": Valor numérico do consumo de energia em kWh (ou null se não houver).
+   - "status": "LOW" se consumo está baixo, "MEDIUM" se moderado, "HIGH" se alto.
+   - "comparison": Texto curto comparando com período anterior (ex: "15% acima da média").
+
+7. "financial"
+   - "total_value": Valor total da conta em número (ex: 150.50).
+   - "due_date": Data de vencimento no formato "DD/MM/AAAA" ou texto legível.
+
+8. "tips"
    - Gere uma lista de 5 a 10 dicas curtas para economizar.
-   - Misture dicas de água e energia.
+   - Misture dicas de água e energia baseadas no tipo de conta.
    - Seja direto e prático.
+   - Cada dica deve ter no máximo 80 caracteres.
 
-3. "action_items"
+9. "action_items"
    - Gere 3 a 5 ações de impacto real.
-   - Formato:
+   - Formato exato:
      {
-       "action": "Descrição objetiva",
+       "action": "Descrição objetiva da ação",
        "priority": "LOW | MEDIUM | HIGH",
        "potential_saving": "R$ X/mês"
      }
+   - Prioridade baseada no impacto e facilidade de implementação.
 
-4. Consumptions:
-   - Detecte m³ ou kWh automaticamente com base no texto.
-   - Se não encontrar valores, coloque null.
+10. IMPORTANTE:
+   - NUNCA envie texto fora do JSON.
+   - NUNCA invente valores absurdos. Seja coerente.
+   - Se não encontrar uma informação, use null para números e string vazia para textos.
+   - O JSON deve ser válido e parseável.
 
-5. NUNCA envie texto fora do JSON.
-6. NUNCA invente valores absurdos. Seja coerente.
-
-Texto da conta:
+Texto da conta extraído do QR Code:
 "${text}"
     `;
     // ---------------------------------------------------------

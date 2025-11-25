@@ -23,6 +23,8 @@ import {
   AlertTriangle,
   ArrowRight,
   TrendingDown,
+  User,
+  Building2,
 } from "lucide-react";
 import {
   Dialog,
@@ -165,12 +167,61 @@ export default function Dashboard() {
                     {isAnalyzing
                       ? "Processando sua conta..."
                       : analyzedData
-                        ? `Análise de ${analyzedData.analysis?.customer ?? "cliente"} - ${analyzedData.analysis?.month ?? ""}`
+                        ? `Análise de ${analyzedData.analysis?.customer_full_name || analyzedData.analysis?.customer || "cliente"}${analyzedData.analysis?.institution ? ` - ${analyzedData.analysis.institution}` : ""} - ${analyzedData.analysis?.month ?? ""}`
                         : "Análise automática da sua conta"}
                   </CardDescription>
                 </CardHeader>
 
                 <CardContent>
+                  {/* Informações do Cliente e Instituição */}
+                  {analyzedData &&
+                    (analyzedData.analysis?.customer_full_name ||
+                      analyzedData.analysis?.institution ||
+                      analyzedData.analysis?.customer) && (
+                      <div className="bg-secondary/30 border-border mb-6 rounded-lg border p-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {analyzedData.analysis?.customer_full_name && (
+                            <div className="flex items-center gap-2">
+                              <User className="text-primary h-4 w-4" />
+                              <div>
+                                <div className="text-muted-foreground text-xs">
+                                  Cliente
+                                </div>
+                                <div className="text-foreground text-sm font-medium">
+                                  {analyzedData.analysis.customer_full_name}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {analyzedData.analysis?.institution && (
+                            <div className="flex items-center gap-2">
+                              <Building2 className="text-primary h-4 w-4" />
+                              <div>
+                                <div className="text-muted-foreground text-xs">
+                                  Instituição
+                                </div>
+                                <div className="text-foreground text-sm font-medium">
+                                  {analyzedData.analysis.institution}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {analyzedData.analysis?.customer &&
+                            !analyzedData.analysis?.customer_full_name && (
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <div className="text-muted-foreground text-xs">
+                                    Nº da Conta
+                                  </div>
+                                  <div className="text-foreground text-sm font-medium">
+                                    {analyzedData.analysis.customer}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    )}
                   {isAnalyzing ? (
                     <div className="animate-pulse space-y-6">
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -192,208 +243,235 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </div>
-                  ) : !analyzedData ? (
-                    <div className="space-y-4">
-                      <div className="bg-secondary/50 border-border rounded-lg border p-4">
-                        <h4 className="text-primary mb-2 font-medium">
-                          Resumo da Análise
-                        </h4>
-                        <p className="text-muted-foreground text-sm leading-relaxed">
-                          Faça o QrCode da sua conta ao lado para que a I.A
-                          possa identificar padrões de consumo e sugerir
-                          melhorias.
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-secondary/30 border-border rounded-lg border p-4">
-                          <div className="text-muted-foreground text-xs uppercase">
-                            Consumo Atual
-                          </div>
-                          <div className="text-foreground mt-1 text-2xl font-bold">
-                            -- m³
-                          </div>
-                        </div>
-                        <div className="bg-secondary/30 border-border rounded-lg border p-4">
-                          <div className="text-muted-foreground text-xs uppercase">
-                            Meta Ideal
-                          </div>
-                          <div className="text-primary mt-1 text-2xl font-bold">
-                            -- m³
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   ) : (
-                    <div className="animate-in fade-in space-y-6 duration-500">
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="bg-secondary/30 border-border rounded-xl border p-4">
-                          <div className="text-muted-foreground text-xs uppercase">
-                            Valor Total
-                          </div>
-                          <div className="text-primary text-2xl font-bold">
-                            R$ {Number(totalValue).toFixed(2)}
-                          </div>
-                          <div className="text-muted-foreground mt-1 text-xs">
-                            Vencimento:{" "}
-                            {analyzedData?.analysis?.financial?.due_date ??
-                              "Não identificado"}
-                          </div>
-                        </div>
-
-                        <div className="bg-secondary/30 border-border rounded-xl border p-4">
-                          <div className="text-muted-foreground text-xs uppercase">
-                            Consumo
-                          </div>
-                          <div className="flex items-baseline gap-1">
-                            <div className="text-foreground text-2xl font-bold">
-                              {analyzedData?.analysis?.consumption?.total_m3 ??
-                                analyzedData?.analysis?.consumption
-                                  ?.total_kwh ??
-                                "0"}
-                            </div>
-                            <span className="text-muted-foreground text-sm">
-                              {analyzedData?.analysis?.consumption?.total_m3
-                                ? "m³"
-                                : "kWh"}
-                            </span>
-                          </div>
-
-                          <div className="mt-1 flex items-center gap-1 text-xs">
-                            <Badge
-                              variant={
-                                analyzedData?.analysis?.consumption?.status ===
-                                "HIGH"
-                                  ? "destructive"
-                                  : "secondary"
-                              }
-                              className="h-5 px-1.5 text-[10px]"
-                            >
-                              {analyzedData?.analysis?.consumption?.status ??
-                                "N/A"}
-                            </Badge>
-
-                            <span className="text-muted-foreground max-w-20 truncate">
-                              {analyzedData?.analysis?.consumption
-                                ?.comparison ?? ""}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        <div className="space-y-3">
-                          <h4 className="text-foreground flex items-center text-sm font-semibold">
-                            <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" />
-                            Insights da IA (Água)
+                    <div className="space-y-6">
+                      {/* Seção Resumo e Consumo - Sempre visível quando não está analisando */}
+                      <div className="space-y-4">
+                        <div className="bg-secondary/50 border-border rounded-lg border p-4">
+                          <h4 className="text-primary mb-2 font-medium">
+                            Resumo da Análise
                           </h4>
+                          <p className="text-muted-foreground text-sm leading-relaxed">
+                            {analyzedData?.analysis?.summary ||
+                              "Faça o QrCode da sua conta ao lado para que a I.A possa identificar padrões de consumo e sugerir melhorias."}
+                          </p>
+                        </div>
 
-                          <div className="bg-secondary/20 space-y-2 rounded-lg p-3">
-                            {waterTips.length ? (
-                              waterTips.map((tip: string, i: number) => (
-                                <div
-                                  key={i}
-                                  className="text-muted-foreground flex items-start gap-2 text-sm"
-                                >
-                                  <ArrowRight className="text-primary mt-1 h-3 w-3" />
-                                  <span>{tip}</span>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="text-muted-foreground text-sm">
-                                Nenhuma dica de água encontrada.
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-secondary/30 border-border rounded-lg border p-4">
+                            <div className="text-muted-foreground text-xs uppercase">
+                              Consumo Atual
+                            </div>
+                            <div className="text-foreground mt-1 text-2xl font-bold">
+                              {analyzedData?.analysis?.consumption?.total_m3
+                                ? `${analyzedData.analysis.consumption.total_m3} m³`
+                                : analyzedData?.analysis?.consumption?.total_kwh
+                                  ? `${analyzedData.analysis.consumption.total_kwh} kWh`
+                                  : "-- m³"}
+                            </div>
+                            {analyzedData?.analysis?.consumption
+                              ?.comparison && (
+                              <div className="text-muted-foreground mt-1 text-xs">
+                                {analyzedData.analysis.consumption.comparison}
                               </div>
                             )}
                           </div>
-
-                          {energyTips.length > 0 && (
-                            <>
-                              <h4 className="text-foreground mt-3 flex items-center text-sm font-semibold">
-                                <Zap className="mr-2 h-4 w-4 text-yellow-500" />
-                                Dicas de Energia
-                              </h4>
-                              <div className="bg-secondary/10 space-y-2 rounded-lg p-3">
-                                {energyTips.map((tip: string, i: number) => (
-                                  <div
-                                    key={i}
-                                    className="text-muted-foreground flex items-start gap-2 text-sm"
-                                  >
-                                    <ArrowRight className="text-primary mt-1 h-3 w-3" />
-                                    <span>{tip}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                        </div>
-
-                        <div className="space-y-3">
-                          <h4 className="text-foreground flex items-center text-sm font-semibold">
-                            <TrendingDown className="mr-2 h-4 w-4 text-green-500" />
-                            Ações Recomendadas
-                          </h4>
-
-                          <div className="grid gap-2">
-                            {analyzedData?.analysis?.action_items
-                              ?.slice(0, 3)
-                              .map((item: any, i: number) => (
-                                <div
-                                  key={i}
-                                  className="group bg-card border-border relative overflow-hidden rounded-lg border p-2.5 hover:shadow-sm"
-                                >
-                                  <div
-                                    className={`absolute top-0 bottom-0 left-0 w-1 ${
-                                      item.priority === "HIGH"
-                                        ? "bg-red-500"
-                                        : item.priority === "MEDIUM"
-                                          ? "bg-yellow-500"
-                                          : "bg-blue-500"
-                                    }`}
-                                  />
-
-                                  <div className="flex items-start justify-between gap-2 pl-2">
-                                    <div>
-                                      <p className="text-foreground group-hover:text-primary text-xs font-medium">
-                                        {item.action}
-                                      </p>
-                                      <p className="text-muted-foreground mt-0.5 text-[10px]">
-                                        Prioridade {item.priority}
-                                      </p>
-                                    </div>
-
-                                    <Badge
-                                      variant="outline"
-                                      className="h-5 border-green-200 bg-green-50 px-1 text-[10px] text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400"
-                                    >
-                                      {item.potential_saving}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              ))}
+                          <div className="bg-secondary/30 border-border rounded-lg border p-4">
+                            <div className="text-muted-foreground text-xs uppercase">
+                              Meta Ideal
+                            </div>
+                            <div className="text-primary mt-1 text-2xl font-bold">
+                              {analyzedData?.analysis?.consumption?.total_m3
+                                ? `${Math.round((analyzedData.analysis.consumption.total_m3 || 0) * 0.8)} m³`
+                                : analyzedData?.analysis?.consumption?.total_kwh
+                                  ? `${Math.round((analyzedData.analysis.consumption.total_kwh || 0) * 0.8)} kWh`
+                                  : "-- m³"}
+                            </div>
+                            <div className="text-muted-foreground mt-1 text-xs">
+                              {analyzedData ? "Economia de 20%" : ""}
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex justify-end pt-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              Ver JSON completo
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="bg-card border-border max-h-[80vh] max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle className="text-foreground">
-                                Resposta da Gemini API
-                              </DialogTitle>
-                            </DialogHeader>
+                      {/* Seção Detalhada - Só aparece quando há dados analisados */}
+                      {analyzedData && (
+                        <div className="animate-in fade-in space-y-6 duration-500">
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="bg-secondary/30 border-border rounded-xl border p-4">
+                              <div className="text-muted-foreground text-xs uppercase">
+                                Valor Total
+                              </div>
+                              <div className="text-primary text-2xl font-bold">
+                                R$ {Number(totalValue).toFixed(2)}
+                              </div>
+                              <div className="text-muted-foreground mt-1 text-xs">
+                                Vencimento:{" "}
+                                {analyzedData?.analysis?.financial?.due_date ??
+                                  "Não identificado"}
+                              </div>
+                            </div>
 
-                            <ScrollArea className="border-border text-primary h-[400px] w-full rounded-md border bg-[#0E131B] p-4 font-mono text-xs">
-                              <pre>{JSON.stringify(analyzedData, null, 2)}</pre>
-                            </ScrollArea>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
+                            <div className="bg-secondary/30 border-border rounded-xl border p-4">
+                              <div className="text-muted-foreground text-xs uppercase">
+                                Consumo
+                              </div>
+                              <div className="flex items-baseline gap-1">
+                                <div className="text-foreground text-2xl font-bold">
+                                  {analyzedData?.analysis?.consumption
+                                    ?.total_m3 ??
+                                    analyzedData?.analysis?.consumption
+                                      ?.total_kwh ??
+                                    "0"}
+                                </div>
+                                <span className="text-muted-foreground text-sm">
+                                  {analyzedData?.analysis?.consumption?.total_m3
+                                    ? "m³"
+                                    : "kWh"}
+                                </span>
+                              </div>
+
+                              <div className="mt-1 flex items-center gap-1 text-xs">
+                                <Badge
+                                  variant={
+                                    analyzedData?.analysis?.consumption
+                                      ?.status === "HIGH"
+                                      ? "destructive"
+                                      : "secondary"
+                                  }
+                                  className="h-5 px-1.5 text-[10px]"
+                                >
+                                  {analyzedData?.analysis?.consumption
+                                    ?.status ?? "N/A"}
+                                </Badge>
+
+                                <span className="text-muted-foreground max-w-20 truncate">
+                                  {analyzedData?.analysis?.consumption
+                                    ?.comparison ?? ""}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                            <div className="space-y-3">
+                              <h4 className="text-foreground flex items-center text-sm font-semibold">
+                                <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" />
+                                Insights da IA (Água)
+                              </h4>
+
+                              <div className="bg-secondary/20 space-y-2 rounded-lg p-3">
+                                {waterTips.length ? (
+                                  waterTips.map((tip: string, i: number) => (
+                                    <div
+                                      key={i}
+                                      className="text-muted-foreground flex items-start gap-2 text-sm"
+                                    >
+                                      <ArrowRight className="text-primary mt-1 h-3 w-3" />
+                                      <span>{tip}</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-muted-foreground text-sm">
+                                    Nenhuma dica de água encontrada.
+                                  </div>
+                                )}
+                              </div>
+
+                              {energyTips.length > 0 && (
+                                <>
+                                  <h4 className="text-foreground mt-3 flex items-center text-sm font-semibold">
+                                    <Zap className="mr-2 h-4 w-4 text-yellow-500" />
+                                    Dicas de Energia
+                                  </h4>
+                                  <div className="bg-secondary/10 space-y-2 rounded-lg p-3">
+                                    {energyTips.map(
+                                      (tip: string, i: number) => (
+                                        <div
+                                          key={i}
+                                          className="text-muted-foreground flex items-start gap-2 text-sm"
+                                        >
+                                          <ArrowRight className="text-primary mt-1 h-3 w-3" />
+                                          <span>{tip}</span>
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            <div className="space-y-3">
+                              <h4 className="text-foreground flex items-center text-sm font-semibold">
+                                <TrendingDown className="mr-2 h-4 w-4 text-green-500" />
+                                Ações Recomendadas
+                              </h4>
+
+                              <div className="grid gap-2">
+                                {analyzedData?.analysis?.action_items
+                                  ?.slice(0, 3)
+                                  .map((item: any, i: number) => (
+                                    <div
+                                      key={i}
+                                      className="group bg-card border-border relative overflow-hidden rounded-lg border p-2.5 hover:shadow-sm"
+                                    >
+                                      <div
+                                        className={`absolute top-0 bottom-0 left-0 w-1 ${
+                                          item.priority === "HIGH"
+                                            ? "bg-red-500"
+                                            : item.priority === "MEDIUM"
+                                              ? "bg-yellow-500"
+                                              : "bg-blue-500"
+                                        }`}
+                                      />
+
+                                      <div className="flex items-start justify-between gap-2 pl-2">
+                                        <div>
+                                          <p className="text-foreground group-hover:text-primary text-xs font-medium">
+                                            {item.action}
+                                          </p>
+                                          <p className="text-muted-foreground mt-0.5 text-[10px]">
+                                            Prioridade {item.priority}
+                                          </p>
+                                        </div>
+
+                                        <Badge
+                                          variant="outline"
+                                          className="h-5 border-green-200 bg-green-50 px-1 text-[10px] text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400"
+                                        >
+                                          {item.potential_saving}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end pt-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  Ver JSON completo
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="bg-card border-border max-h-[80vh] max-w-2xl">
+                                <DialogHeader>
+                                  <DialogTitle className="text-foreground">
+                                    Resposta da Gemini API
+                                  </DialogTitle>
+                                </DialogHeader>
+
+                                <ScrollArea className="border-border text-primary h-[400px] w-full rounded-md border bg-[#0E131B] p-4 font-mono text-xs">
+                                  <pre>
+                                    {JSON.stringify(analyzedData, null, 2)}
+                                  </pre>
+                                </ScrollArea>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

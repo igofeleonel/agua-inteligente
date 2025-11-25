@@ -6,7 +6,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 
-import { ScanLine, CheckCircle2, AlertTriangle, Camera } from "lucide-react";
+import {
+  ScanLine,
+  CheckCircle2,
+  AlertTriangle,
+  Camera,
+  Droplet,
+  Zap,
+  TrendingDown,
+  Calendar,
+  DollarSign,
+  User,
+  Building2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +28,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 interface BillAnalyzerProps {
   onAnalysisComplete?: (data: any) => void;
@@ -32,6 +45,7 @@ export function BillAnalyzer({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [analysisText, setAnalysisText] = useState<string | null>(null);
+  const [analysisData, setAnalysisData] = useState<any>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -94,14 +108,15 @@ export function BillAnalyzer({
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrText: content }),
+        body: JSON.stringify({ text: content }),
       });
 
       const data = await response.json();
 
       if (!data.error) {
         setIsSuccess(true);
-        setAnalysisText(data.summary);
+        setAnalysisText(data.analysis?.summary || "");
+        setAnalysisData(data);
         onAnalysisComplete?.(data);
       }
     } catch (e) {
@@ -207,6 +222,7 @@ export function BillAnalyzer({
                   setIsSuccess(false);
                   setDecodedText(null);
                   setAnalysisText(null);
+                  setAnalysisData(null);
                   onAnalysisComplete?.(null);
                 }}
               >
@@ -214,16 +230,219 @@ export function BillAnalyzer({
               </Button>
             </div>
 
-            {analysisText && (
-              <div className="bg-secondary border-border rounded-lg border p-4">
-                <h4 className="text-foreground mb-3 flex items-center text-sm font-semibold">
-                  <AlertTriangle className="mr-2 h-4 w-4 text-yellow-500" />
-                  Diagnóstico da conta
-                </h4>
+            {analysisData && (
+              <div className="space-y-4">
+                {/* Informações do Cliente e Instituição */}
+                {(analysisData.analysis?.customer_full_name ||
+                  analysisData.analysis?.institution ||
+                  analysisData.analysis?.customer) && (
+                  <div className="bg-secondary/50 border-border rounded-lg border p-4">
+                    <h4 className="text-foreground mb-3 flex items-center text-sm font-semibold">
+                      <User className="mr-2 h-4 w-4 text-blue-500" />
+                      Informações da Conta
+                    </h4>
+                    <div className="space-y-2">
+                      {analysisData.analysis?.customer_full_name && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground text-xs">
+                            Nome:
+                          </span>
+                          <span className="text-foreground text-sm font-medium">
+                            {analysisData.analysis.customer_full_name}
+                          </span>
+                        </div>
+                      )}
+                      {analysisData.analysis?.institution && (
+                        <div className="flex items-center gap-2">
+                          <Building2 className="text-primary h-3 w-3" />
+                          <span className="text-muted-foreground text-xs">
+                            Instituição:
+                          </span>
+                          <span className="text-foreground text-sm font-medium">
+                            {analysisData.analysis.institution}
+                          </span>
+                        </div>
+                      )}
+                      {analysisData.analysis?.customer && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground text-xs">
+                            Conta:
+                          </span>
+                          <span className="text-foreground text-sm">
+                            {analysisData.analysis.customer}
+                          </span>
+                        </div>
+                      )}
+                      {analysisData.analysis?.month && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground text-xs">
+                            Período:
+                          </span>
+                          <span className="text-foreground text-sm">
+                            {analysisData.analysis.month}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-                <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-line">
-                  {analysisText}
-                </p>
+                {/* Resumo da Análise */}
+                {analysisText && (
+                  <div className="bg-secondary border-border rounded-lg border p-4">
+                    <h4 className="text-foreground mb-3 flex items-center text-sm font-semibold">
+                      <AlertTriangle className="mr-2 h-4 w-4 text-yellow-500" />
+                      Resumo da Análise
+                    </h4>
+                    <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-line">
+                      {analysisText}
+                    </p>
+                  </div>
+                )}
+
+                {/* Informações Principais */}
+                <div className="grid grid-cols-2 gap-3">
+                  {analysisData.analysis?.financial?.total_value && (
+                    <div className="bg-secondary/30 border-border rounded-lg border p-3">
+                      <div className="text-muted-foreground mb-1 flex items-center text-xs uppercase">
+                        <DollarSign className="mr-1 h-3 w-3" />
+                        Valor Total
+                      </div>
+                      <div className="text-primary text-lg font-bold">
+                        R${" "}
+                        {Number(
+                          analysisData.analysis.financial.total_value,
+                        ).toFixed(2)}
+                      </div>
+                    </div>
+                  )}
+
+                  {(analysisData.analysis?.consumption?.total_m3 ||
+                    analysisData.analysis?.consumption?.total_kwh) && (
+                    <div className="bg-secondary/30 border-border rounded-lg border p-3">
+                      <div className="text-muted-foreground mb-1 flex items-center text-xs uppercase">
+                        <Droplet className="mr-1 h-3 w-3" />
+                        Consumo
+                      </div>
+                      <div className="text-foreground text-lg font-bold">
+                        {analysisData.analysis.consumption.total_m3 ||
+                          analysisData.analysis.consumption.total_kwh ||
+                          "0"}
+                        <span className="text-muted-foreground ml-1 text-xs">
+                          {analysisData.analysis.consumption.total_m3
+                            ? "m³"
+                            : "kWh"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {analysisData.analysis?.financial?.due_date && (
+                    <div className="bg-secondary/30 border-border rounded-lg border p-3">
+                      <div className="text-muted-foreground mb-1 flex items-center text-xs uppercase">
+                        <Calendar className="mr-1 h-3 w-3" />
+                        Vencimento
+                      </div>
+                      <div className="text-foreground text-sm font-medium">
+                        {analysisData.analysis.financial.due_date}
+                      </div>
+                    </div>
+                  )}
+
+                  {analysisData.analysis?.consumption?.status && (
+                    <div className="bg-secondary/30 border-border rounded-lg border p-3">
+                      <div className="text-muted-foreground mb-1 flex items-center text-xs uppercase">
+                        <TrendingDown className="mr-1 h-3 w-3" />
+                        Status
+                      </div>
+                      <Badge
+                        variant={
+                          analysisData.analysis.consumption.status === "HIGH"
+                            ? "destructive"
+                            : analysisData.analysis.consumption.status ===
+                                "MEDIUM"
+                              ? "default"
+                              : "secondary"
+                        }
+                        className="h-5 text-[10px]"
+                      >
+                        {analysisData.analysis.consumption.status}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dicas Principais */}
+                {analysisData.analysis?.tips &&
+                  analysisData.analysis.tips.length > 0 && (
+                    <div className="bg-secondary/20 border-border rounded-lg border p-4">
+                      <h4 className="text-foreground mb-3 flex items-center text-sm font-semibold">
+                        <Zap className="mr-2 h-4 w-4 text-yellow-500" />
+                        Dicas de Economia
+                      </h4>
+                      <div className="space-y-2">
+                        {analysisData.analysis.tips
+                          .slice(0, 5)
+                          .map((tip: string, i: number) => (
+                            <div
+                              key={i}
+                              className="text-muted-foreground flex items-start gap-2 text-xs"
+                            >
+                              <span className="text-primary mt-0.5">•</span>
+                              <span>{tip}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Ações Recomendadas */}
+                {analysisData.analysis?.action_items &&
+                  analysisData.analysis.action_items.length > 0 && (
+                    <div className="bg-secondary/20 border-border rounded-lg border p-4">
+                      <h4 className="text-foreground mb-3 flex items-center text-sm font-semibold">
+                        <TrendingDown className="mr-2 h-4 w-4 text-green-500" />
+                        Ações Recomendadas
+                      </h4>
+                      <div className="space-y-2">
+                        {analysisData.analysis.action_items
+                          .slice(0, 3)
+                          .map((item: any, i: number) => (
+                            <div
+                              key={i}
+                              className="bg-card border-border rounded-md border p-2.5"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <p className="text-foreground text-xs font-medium">
+                                    {item.action}
+                                  </p>
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <Badge
+                                      variant="outline"
+                                      className={`h-4 text-[9px] ${
+                                        item.priority === "HIGH"
+                                          ? "border-red-500 text-red-500"
+                                          : item.priority === "MEDIUM"
+                                            ? "border-yellow-500 text-yellow-500"
+                                            : "border-blue-500 text-blue-500"
+                                      }`}
+                                    >
+                                      {item.priority}
+                                    </Badge>
+                                    {item.potential_saving && (
+                                      <span className="text-primary text-[10px] font-medium">
+                                        {item.potential_saving}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
               </div>
             )}
           </div>
