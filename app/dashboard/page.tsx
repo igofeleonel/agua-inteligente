@@ -25,6 +25,7 @@ import {
   TrendingDown,
   User,
   Building2,
+  Calendar,
 } from "lucide-react";
 import {
   Dialog,
@@ -233,6 +234,20 @@ export default function Dashboard() {
                             </div>
                           </div>
                         )}
+                        {analyzedData.analysis?.date &&
+                          analyzedData.analysis.date !== "xxxxx" && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="text-primary h-4 w-4" />
+                              <div>
+                                <div className="text-muted-foreground text-xs">
+                                  Data
+                                </div>
+                                <div className="text-foreground text-sm font-medium">
+                                  {analyzedData.analysis.date}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                       </div>
                     </div>
                   )}

@@ -79,6 +79,8 @@ export function BillAnalyzer({
           await safelyStop();
           setScanning(false);
           setDecodedText(decoded);
+          console.log("QR Code/Código de Barras escaneado:", decoded);
+          console.log("Tamanho do texto:", decoded.length);
           analyzeQRCode(decoded);
         },
         () => {},
@@ -104,11 +106,18 @@ export function BillAnalyzer({
     setIsAnalyzing(true);
     onAnalyzingChange?.(true);
 
+    // Limpa e prepara o texto para análise
+    const cleanedText = content.trim();
+    console.log(
+      "Enviando para API:",
+      cleanedText.substring(0, 200) + (cleanedText.length > 200 ? "..." : ""),
+    );
+
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: content }),
+        body: JSON.stringify({ text: cleanedText }),
       });
 
       const data = await response.json();
@@ -124,6 +133,7 @@ export function BillAnalyzer({
             customer_full_name: "xxxxx",
             institution: "xxxxx",
             month: "xxxxx",
+            date: "xxxxx",
             summary:
               "Não foi possível analisar completamente o QR code. Por favor, tente novamente ou verifique se o código está legível.",
             consumption: {
@@ -152,6 +162,7 @@ export function BillAnalyzer({
             customer_full_name: data.analysis?.customer_full_name || "xxxxx",
             institution: data.analysis?.institution || "xxxxx",
             month: data.analysis?.month || "xxxxx",
+            date: data.analysis?.date || "xxxxx",
             summary:
               data.analysis?.summary ||
               "Análise realizada, mas algumas informações não foram identificadas.",
@@ -184,6 +195,7 @@ export function BillAnalyzer({
           customer_full_name: "xxxxx",
           institution: "xxxxx",
           month: "xxxxx",
+          date: "xxxxx",
           summary: "Erro ao processar o QR code. Por favor, tente novamente.",
           consumption: {
             total_m3: null,
@@ -359,6 +371,18 @@ export function BillAnalyzer({
                         {analysisData.analysis?.month || "xxxxx"}
                       </span>
                     </div>
+                    {analysisData.analysis?.date &&
+                      analysisData.analysis.date !== "xxxxx" && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="text-primary h-3 w-3" />
+                          <span className="text-muted-foreground text-xs">
+                            Data:
+                          </span>
+                          <span className="text-foreground text-sm">
+                            {analysisData.analysis.date}
+                          </span>
+                        </div>
+                      )}
                   </div>
                 </div>
 
