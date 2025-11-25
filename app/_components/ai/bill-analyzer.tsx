@@ -1,13 +1,11 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { useEffect, useRef, useState } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 
 import { ScanLine, CheckCircle2, AlertTriangle, Camera } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,6 +30,7 @@ export function BillAnalyzer({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [analysisText, setAnalysisText] = useState<string | null>(null);
+  const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
 
   /** 🔥 API GEMINI */
   const analyzeQRCode = async (content: string) => {
@@ -60,40 +59,45 @@ export function BillAnalyzer({
     }
   };
 
-  /** 🚀 Scanner idêntico ao demo oficial */
+  /** 🚀 Scanner transparente estilo demo oficial */
   useEffect(() => {
     if (!isScanning) return;
 
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      {
-        fps: 10,
-        qrbox: 250,
-      },
-      false,
-    );
+    const qrRegionId = "qr-reader";
+    html5QrcodeRef.current = new Html5Qrcode(qrRegionId);
 
-    function onScanSuccess(decodedText: string) {
-      scanner.clear();
-      setQrText(decodedText);
-      setIsScanning(false);
-      analyzeQRCode(decodedText);
-    }
-
-    function onScanFailure(error: any) {
-      // pode ignorar, apenas necessário para o .render()
-    }
-
-    scanner.render(onScanSuccess, onScanFailure);
+    html5QrcodeRef.current
+      .start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: 250, // 🔥 REMOVIDO verbose (não existe nesta versão)
+        },
+        (decodedText) => {
+          html5QrcodeRef.current
+            ?.stop()
+            .then(() => {
+              setQrText(decodedText);
+              setIsScanning(false);
+              analyzeQRCode(decodedText);
+            })
+            .catch(() => {});
+        },
+        () => {}, // ignora erros
+      )
+      .catch((err) => {
+        console.error("Erro ao iniciar scanner:", err);
+        setIsScanning(false);
+      });
 
     return () => {
-      scanner?.clear().catch(() => {});
+      html5QrcodeRef.current?.stop().catch(() => {});
     };
   }, [isScanning]);
 
   return (
     <Card className="border-border bg-card h-full overflow-hidden shadow-lg transition-all hover:shadow-xl">
-      <CardHeader className="border-border border-b bg-linear-to-r from-[#121D25] to-[#122529] dark:from-[#121D25] dark:to-[#122529]">
+      <CardHeader className="border-border border-b bg-linear-to-r from-[#121D25] to-[#122529]">
         <CardTitle className="text-foreground flex items-center gap-2 text-xl">
           <ScanLine className="text-primary h-6 w-6" />
           EcoWater AI
@@ -127,8 +131,19 @@ export function BillAnalyzer({
                     </Button>
                   </>
                 ) : (
-                  <div className="w-full">
-                    <div id="qr-reader" className="w-full" />
+                  <div className="relative h-[400px] w-full">
+                    {/* Scanner transparente */}
+                    <div
+                      id="qr-reader"
+                      className="absolute top-0 left-0 h-full w-full"
+                      style={{ background: "transparent" }}
+                    />
+
+                    {/* Overlay de foco estilo demo */}
+                    <div className="pointer-events-none absolute top-0 left-0 h-full w-full">
+                      <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-lg border-4 border-red-500" />
+                      <div className="absolute top-1/2 left-1/2 h-0.5 w-64 -translate-x-1/2 -translate-y-1/2 animate-pulse bg-red-500" />
+                    </div>
 
                     <Button
                       variant="outline"
