@@ -48,8 +48,8 @@ export function BillAnalyzer({
 
       if (!data.error) {
         setIsSuccess(true);
-        setAnalysisText(data.summary);
-        onAnalysisComplete?.(data);
+        setAnalysisText(data.summary); // resumo geral
+        onAnalysisComplete?.(data); // envia {summary, insights, actions}
       }
     } catch (e) {
       console.error("Erro ao analisar QRCode:", e);
@@ -71,7 +71,7 @@ export function BillAnalyzer({
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: 250, // 🔥 REMOVIDO verbose (não existe nesta versão)
+          qrbox: 250,
         },
         (decodedText) => {
           html5QrcodeRef.current
@@ -83,7 +83,9 @@ export function BillAnalyzer({
             })
             .catch(() => {});
         },
-        () => {}, // ignora erros
+        (error) => {
+          console.warn("QR Scan error:", error);
+        },
       )
       .catch((err) => {
         console.error("Erro ao iniciar scanner:", err);
@@ -102,7 +104,6 @@ export function BillAnalyzer({
           <ScanLine className="text-primary h-6 w-6" />
           EcoWater AI
         </CardTitle>
-
         <CardDescription className="text-muted-foreground">
           Análise automática da conta — QR Code + Gemini
         </CardDescription>
@@ -139,7 +140,7 @@ export function BillAnalyzer({
                       style={{ background: "transparent" }}
                     />
 
-                    {/* Overlay de foco estilo demo */}
+                    {/* Overlay animado */}
                     <div className="pointer-events-none absolute top-0 left-0 h-full w-full">
                       <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-lg border-4 border-red-500" />
                       <div className="absolute top-1/2 left-1/2 h-0.5 w-64 -translate-x-1/2 -translate-y-1/2 animate-pulse bg-red-500" />

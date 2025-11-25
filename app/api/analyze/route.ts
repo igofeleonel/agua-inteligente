@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
 
-// INIT GEMINI
+// Inicializa Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
@@ -17,9 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "QR Code vazio." }, { status: 400 });
     }
 
-    // -----------------------------
-    // PROMPT OTIMIZADO (PARANÁ INTEIRO)
-    // -----------------------------
+    // Prompt detalhado fornecido
     const prompt = `
 Você agora é um especialista técnico da SANEPAR com mais de 15 anos de experiência analisando consumo em todo o estado do Paraná.
 
@@ -68,16 +66,17 @@ Crie um plano dividido em:
 Retorne tudo em formato de texto contínuo e organizado.
 `;
 
-    // Gemini → geração
+    // Geração pelo Gemini
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
     return NextResponse.json({
-      summary: text, // Texto geral
-      insights: text, // Você pode separar depois se quiser
-      actions: text, // Por enquanto retornamos tudo junto
+      summary: text,
+      insights: text,
+      actions: text,
     });
   } catch (error) {
+    console.error("Erro ao gerar análise no Gemini:", error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
