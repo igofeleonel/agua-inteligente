@@ -4,8 +4,17 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
 
+// Inicializa Gemini API (gratuito - gemini-1.5-flash)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+  generationConfig: {
+    temperature: 0.3, // Menor temperatura para respostas mais precisas
+    topP: 0.95,
+    topK: 40,
+    maxOutputTokens: 2048,
+  },
+});
 
 export async function POST(req: Request) {
   try {
@@ -105,8 +114,9 @@ Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (S
 8. "financial"
    - "total_value": Valor total da conta em número (ex: 150.50).
    - Procure por valores monetários: R$, reais, valores com vírgula ou ponto decimal.
-   - "due_date": Data de vencimento no formato "DD/MM/AAAA" (ex: "15/03/2024").
-   - Procure por padrões: "Vencimento", "Venc", "Vencimento em", "Pagar até", seguidos de data.
+   - "due_date": Data de vencimento/validação no formato "DD/MM/AAAA" (ex: "15/03/2024").
+   - Procure por padrões: "Vencimento", "Venc", "Vencimento em", "Pagar até", "Validade", "Data de validade", seguidos de data.
+   - Esta é a DATA DE VALIDAÇÃO da conta - extraia com prioridade.
    - Se não encontrar, use "xxxxx".
 
 9. "tips"
@@ -149,33 +159,87 @@ Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (S
 Texto da conta extraído do QR Code/Código de Barras:
 "${text}"
 
-ANÁLISE DETALHADA - EXTRAIA TUDO:
+ANÁLISE DETALHADA - EXTRAIA TUDO EM TEMPO REAL:
 - Procure por TODOS os padrões de nome, data, valor, instituição no texto acima.
 - Extraia informações mesmo que estejam em formatos diferentes ou codificados.
-- Se encontrar "Igor", "Maria", "João" ou qualquer nome, use ele - NÃO use "xxxxx".
-- Se encontrar "Sanepar", "Copel" ou qualquer instituição, use ela - NÃO use "xxxxx".
+- Se encontrar "Igor", "Maria", "João" ou QUALQUER nome, use ele - NUNCA use "xxxxx" se houver nome.
+- Se encontrar "Sanepar", "Copel" ou QUALQUER instituição, use ela - NUNCA use "xxxxx" se houver instituição.
 - Se o texto contiver apenas números/códigos, tente identificar padrões de conta, data, valor.
 - Seja AGRESSIVO na extração - melhor pegar informação parcial do que usar "xxxxx".
+- PRIORIDADE MÁXIMA: Extrair nome completo, instituição, número da conta, período e data de validação.
+- Se encontrar qualquer informação parcial, use ela - não espere informação completa.
+- O objetivo é mostrar dados REAIS em TEMPO REAL, não placeholders.
     `;
     // ---------------------------------------------------------
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    console.log("=== GEMINI API - INICIANDO ANÁLISE ===");
+    console.log(
+      "Texto recebido (primeiros 200 chars):",
+      text.substring(0, 200),
+    );
 
-    let parsed;
     try {
-      parsed = JSON.parse(responseText);
-    } catch {
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+
+      console.log("=== GEMINI API - RESPOSTA RECEBIDA ===");
+      console.log("Resposta completa:", responseText.substring(0, 500));
+
+      // Limpa a resposta do Gemini (remove markdown code blocks se houver)
+      let cleanedResponse = responseText.trim();
+      if (cleanedResponse.startsWith("```json")) {
+        cleanedResponse = cleanedResponse
+          .replace(/```json\n?/g, "")
+          .replace(/```\n?/g, "");
+      } else if (cleanedResponse.startsWith("```")) {
+        cleanedResponse = cleanedResponse.replace(/```\n?/g, "");
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(cleanedResponse);
+        console.log("=== GEMINI API - JSON PARSEADO COM SUCESSO ===");
+        console.log("Dados extraídos:", JSON.stringify(parsed, null, 2));
+      } catch (parseError) {
+        console.error("=== ERRO AO PARSEAR JSON ===");
+        console.error("Resposta original:", responseText);
+        console.error("Resposta limpa:", cleanedResponse);
+        console.error("Erro:", parseError);
+
+        return NextResponse.json(
+          {
+            error: "A IA retornou uma resposta inválida.",
+            raw: responseText,
+            cleaned: cleanedResponse,
+          },
+          { status: 500 },
+        );
+      }
+
+      // Valida se a estrutura está correta
+      if (!parsed.analysis) {
+        console.error("=== ESTRUTURA INVÁLIDA - SEM 'analysis' ===");
+        return NextResponse.json(
+          {
+            error: "Estrutura de resposta inválida.",
+            raw: parsed,
+          },
+          { status: 500 },
+        );
+      }
+
+      console.log("=== GEMINI API - RETORNANDO DADOS ===");
+      return NextResponse.json(parsed);
+    } catch (geminiError: any) {
+      console.error("=== ERRO NA CHAMADA DO GEMINI ===");
+      console.error("Erro:", geminiError);
       return NextResponse.json(
         {
-          error: "A IA retornou uma resposta inválida.",
-          raw: responseText,
+          error: `Erro ao chamar Gemini API: ${geminiError?.message || "Erro desconhecido"}`,
         },
         { status: 500 },
       );
     }
-
-    return NextResponse.json(parsed);
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message ?? "Erro interno" },

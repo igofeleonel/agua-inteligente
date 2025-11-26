@@ -42,10 +42,30 @@ export default function Dashboard() {
   const [analyzedData, setAnalyzedData] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Debug: log quando analyzedData mudar
+  // Atualiza em tempo real quando analyzedData mudar
   useEffect(() => {
     if (analyzedData) {
-      console.log("Dashboard recebeu analyzedData:", analyzedData);
+      console.log("=== DASHBOARD - DADOS RECEBIDOS EM TEMPO REAL ===");
+      console.log("Nome:", analyzedData.analysis?.customer_full_name);
+      console.log("Instituição:", analyzedData.analysis?.institution);
+      console.log("Nº Conta:", analyzedData.analysis?.customer);
+      console.log("Período:", analyzedData.analysis?.month);
+      console.log(
+        "Data Validação:",
+        analyzedData.analysis?.financial?.due_date,
+      );
+      console.log(
+        "Consumo:",
+        analyzedData.analysis?.consumption?.total_m3 ||
+          analyzedData.analysis?.consumption?.total_kwh,
+      );
+      console.log(
+        "Valor Total:",
+        analyzedData.analysis?.financial?.total_value,
+      );
+      console.log("Dicas:", analyzedData.analysis?.tips?.length || 0);
+      console.log("Ações:", analyzedData.analysis?.action_items?.length || 0);
+      console.log("================================================");
     }
   }, [analyzedData]);
 
@@ -181,73 +201,95 @@ export default function Dashboard() {
                 </CardHeader>
 
                 <CardContent>
-                  {/* Informações do Cliente e Instituição - SEMPRE mostra quando há analyzedData */}
+                  {/* Informações do Cliente e Instituição - SEMPRE mostra quando há analyzedData em TEMPO REAL */}
                   {analyzedData && (
-                    <div className="bg-secondary/30 border-border mb-6 rounded-lg border p-4">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="bg-secondary/30 border-border animate-in fade-in mb-6 rounded-lg border p-4 duration-300">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {/* Nome Completo */}
                         <div className="flex items-center gap-2">
-                          <User className="text-primary h-4 w-4" />
-                          <div>
-                            <div className="text-muted-foreground text-xs">
-                              Cliente
+                          <User className="text-primary h-4 w-4 shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-muted-foreground text-xs font-medium">
+                              Nome Completo
                             </div>
-                            <div className="text-foreground text-sm font-medium">
-                              {analyzedData.analysis?.customer_full_name ||
-                                analyzedData.analysis?.customer ||
-                                "xxxxx"}
+                            <div className="text-foreground truncate text-sm font-semibold">
+                              {analyzedData.analysis?.customer_full_name &&
+                              analyzedData.analysis.customer_full_name !==
+                                "xxxxx"
+                                ? analyzedData.analysis.customer_full_name
+                                : analyzedData.analysis?.customer &&
+                                    analyzedData.analysis.customer !== "xxxxx"
+                                  ? analyzedData.analysis.customer
+                                  : "Aguardando leitura..."}
                             </div>
                           </div>
                         </div>
+
+                        {/* Instituição */}
                         <div className="flex items-center gap-2">
-                          <Building2 className="text-primary h-4 w-4" />
-                          <div>
-                            <div className="text-muted-foreground text-xs">
+                          <Building2 className="text-primary h-4 w-4 shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-muted-foreground text-xs font-medium">
                               Instituição
                             </div>
-                            <div className="text-foreground text-sm font-medium">
-                              {analyzedData.analysis?.institution || "xxxxx"}
+                            <div className="text-foreground truncate text-sm font-semibold">
+                              {analyzedData.analysis?.institution &&
+                              analyzedData.analysis.institution !== "xxxxx"
+                                ? analyzedData.analysis.institution
+                                : "Aguardando leitura..."}
                             </div>
                           </div>
                         </div>
-                        {analyzedData.analysis?.customer &&
-                          analyzedData.analysis?.customer_full_name && (
-                            <div className="flex items-center gap-2">
-                              <div>
-                                <div className="text-muted-foreground text-xs">
-                                  Nº da Conta
-                                </div>
-                                <div className="text-foreground text-sm font-medium">
-                                  {analyzedData.analysis.customer}
-                                </div>
-                              </div>
+
+                        {/* Nº da Conta */}
+                        <div className="flex items-center gap-2">
+                          <div className="min-w-0">
+                            <div className="text-muted-foreground text-xs font-medium">
+                              Nº da Conta
                             </div>
-                          )}
-                        {analyzedData.analysis?.month && (
-                          <div className="flex items-center gap-2">
-                            <div>
-                              <div className="text-muted-foreground text-xs">
-                                Período
-                              </div>
-                              <div className="text-foreground text-sm font-medium">
-                                {analyzedData.analysis.month}
-                              </div>
+                            <div className="text-foreground truncate text-sm font-semibold">
+                              {analyzedData.analysis?.customer &&
+                              analyzedData.analysis.customer !== "xxxxx"
+                                ? analyzedData.analysis.customer
+                                : "Aguardando leitura..."}
                             </div>
                           </div>
-                        )}
-                        {analyzedData.analysis?.date &&
-                          analyzedData.analysis.date !== "xxxxx" && (
-                            <div className="flex items-center gap-2">
-                              <Calendar className="text-primary h-4 w-4" />
-                              <div>
-                                <div className="text-muted-foreground text-xs">
-                                  Data
-                                </div>
-                                <div className="text-foreground text-sm font-medium">
-                                  {analyzedData.analysis.date}
-                                </div>
-                              </div>
+                        </div>
+
+                        {/* Período */}
+                        <div className="flex items-center gap-2">
+                          <div className="min-w-0">
+                            <div className="text-muted-foreground text-xs font-medium">
+                              Período
                             </div>
-                          )}
+                            <div className="text-foreground text-sm font-semibold">
+                              {analyzedData.analysis?.month &&
+                              analyzedData.analysis.month !== "xxxxx"
+                                ? analyzedData.analysis.month
+                                : "Aguardando leitura..."}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Data de Validação */}
+                        <div className="flex items-center gap-2">
+                          <Calendar className="text-primary h-4 w-4 shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-muted-foreground text-xs font-medium">
+                              Data de Validação
+                            </div>
+                            <div className="text-foreground text-sm font-semibold">
+                              {analyzedData.analysis?.financial?.due_date &&
+                              analyzedData.analysis.financial.due_date !==
+                                "xxxxx"
+                                ? analyzedData.analysis.financial.due_date
+                                : analyzedData.analysis?.date &&
+                                    analyzedData.analysis.date !== "xxxxx"
+                                  ? analyzedData.analysis.date
+                                  : "Aguardando leitura..."}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -287,7 +329,7 @@ export default function Dashboard() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-secondary/30 border-border rounded-lg border p-4">
+                          <div className="bg-secondary/30 border-border animate-in fade-in rounded-lg border p-4 duration-300">
                             <div className="text-muted-foreground text-xs uppercase">
                               Consumo Atual
                             </div>
@@ -304,8 +346,26 @@ export default function Dashboard() {
                                 {analyzedData.analysis.consumption.comparison}
                               </div>
                             )}
+                            {analyzedData?.analysis?.consumption?.status && (
+                              <div className="mt-2">
+                                <Badge
+                                  variant={
+                                    analyzedData.analysis.consumption.status ===
+                                    "HIGH"
+                                      ? "destructive"
+                                      : analyzedData.analysis.consumption
+                                            .status === "MEDIUM"
+                                        ? "default"
+                                        : "secondary"
+                                  }
+                                  className="text-[10px]"
+                                >
+                                  {analyzedData.analysis.consumption.status}
+                                </Badge>
+                              </div>
+                            )}
                           </div>
-                          <div className="bg-secondary/30 border-border rounded-lg border p-4">
+                          <div className="bg-secondary/30 border-border animate-in fade-in rounded-lg border p-4 duration-300">
                             <div className="text-muted-foreground text-xs uppercase">
                               Meta Ideal
                             </div>
@@ -317,15 +377,17 @@ export default function Dashboard() {
                                   : "-- m³"}
                             </div>
                             <div className="text-muted-foreground mt-1 text-xs">
-                              {analyzedData ? "Economia de 20%" : ""}
+                              {analyzedData
+                                ? "Economia de até 50% possível"
+                                : ""}
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Seção Detalhada - Só aparece quando há dados analisados */}
+                      {/* Seção Detalhada - Aparece em TEMPO REAL quando há dados analisados */}
                       {analyzedData && (
-                        <div className="animate-in fade-in space-y-6 duration-500">
+                        <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6 duration-500">
                           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="bg-secondary/30 border-border rounded-xl border p-4">
                               <div className="text-muted-foreground text-xs uppercase">
@@ -383,26 +445,43 @@ export default function Dashboard() {
                           </div>
 
                           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                            <div className="space-y-3">
+                            <div className="animate-in fade-in slide-in-from-left space-y-3 duration-500">
                               <h4 className="text-foreground flex items-center text-sm font-semibold">
                                 <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" />
-                                Insights da IA (Água)
+                                Insights da IA (Água) - Tempo Real
                               </h4>
 
-                              <div className="bg-secondary/20 space-y-2 rounded-lg p-3">
-                                {waterTips.length ? (
+                              <div className="bg-secondary/20 max-h-64 space-y-2 overflow-y-auto rounded-lg p-3">
+                                {waterTips.length > 0 ? (
                                   waterTips.map((tip: string, i: number) => (
                                     <div
                                       key={i}
-                                      className="text-muted-foreground flex items-start gap-2 text-sm"
+                                      className="text-muted-foreground animate-in fade-in flex items-start gap-2 text-sm duration-300"
+                                      style={{ animationDelay: `${i * 50}ms` }}
                                     >
-                                      <ArrowRight className="text-primary mt-1 h-3 w-3" />
+                                      <ArrowRight className="text-primary mt-1 h-3 w-3 shrink-0" />
                                       <span>{tip}</span>
                                     </div>
                                   ))
+                                ) : analyzedData?.analysis?.tips &&
+                                  analyzedData.analysis.tips.length > 0 ? (
+                                  analyzedData.analysis.tips.map(
+                                    (tip: string, i: number) => (
+                                      <div
+                                        key={i}
+                                        className="text-muted-foreground animate-in fade-in flex items-start gap-2 text-sm duration-300"
+                                        style={{
+                                          animationDelay: `${i * 50}ms`,
+                                        }}
+                                      >
+                                        <ArrowRight className="text-primary mt-1 h-3 w-3 shrink-0" />
+                                        <span>{tip}</span>
+                                      </div>
+                                    ),
+                                  )
                                 ) : (
                                   <div className="text-muted-foreground text-sm">
-                                    Nenhuma dica de água encontrada.
+                                    Analisando dicas de economia...
                                   </div>
                                 )}
                               </div>
@@ -430,49 +509,61 @@ export default function Dashboard() {
                               )}
                             </div>
 
-                            <div className="space-y-3">
+                            <div className="animate-in fade-in slide-in-from-right space-y-3 duration-500">
                               <h4 className="text-foreground flex items-center text-sm font-semibold">
                                 <TrendingDown className="mr-2 h-4 w-4 text-green-500" />
-                                Ações Recomendadas
+                                Ações Recomendadas - Tempo Real
                               </h4>
 
-                              <div className="grid gap-2">
-                                {analyzedData?.analysis?.action_items
-                                  ?.slice(0, 3)
-                                  .map((item: any, i: number) => (
-                                    <div
-                                      key={i}
-                                      className="group bg-card border-border relative overflow-hidden rounded-lg border p-2.5 hover:shadow-sm"
-                                    >
+                              <div className="grid max-h-64 gap-2 overflow-y-auto">
+                                {analyzedData?.analysis?.action_items &&
+                                analyzedData.analysis.action_items.length >
+                                  0 ? (
+                                  analyzedData.analysis.action_items
+                                    .slice(0, 5)
+                                    .map((item: any, i: number) => (
                                       <div
-                                        className={`absolute top-0 bottom-0 left-0 w-1 ${
-                                          item.priority === "HIGH"
-                                            ? "bg-red-500"
-                                            : item.priority === "MEDIUM"
-                                              ? "bg-yellow-500"
-                                              : "bg-blue-500"
-                                        }`}
-                                      />
+                                        key={i}
+                                        className="group bg-card border-border animate-in fade-in relative overflow-hidden rounded-lg border p-2.5 duration-300 hover:shadow-sm"
+                                        style={{
+                                          animationDelay: `${i * 100}ms`,
+                                        }}
+                                      >
+                                        <div
+                                          className={`absolute top-0 bottom-0 left-0 w-1 ${
+                                            item.priority === "HIGH"
+                                              ? "bg-red-500"
+                                              : item.priority === "MEDIUM"
+                                                ? "bg-yellow-500"
+                                                : "bg-blue-500"
+                                          }`}
+                                        />
 
-                                      <div className="flex items-start justify-between gap-2 pl-2">
-                                        <div>
-                                          <p className="text-foreground group-hover:text-primary text-xs font-medium">
-                                            {item.action}
-                                          </p>
-                                          <p className="text-muted-foreground mt-0.5 text-[10px]">
-                                            Prioridade {item.priority}
-                                          </p>
+                                        <div className="flex items-start justify-between gap-2 pl-2">
+                                          <div>
+                                            <p className="text-foreground group-hover:text-primary text-xs font-medium">
+                                              {item.action}
+                                            </p>
+                                            <p className="text-muted-foreground mt-0.5 text-[10px]">
+                                              Prioridade {item.priority}
+                                            </p>
+                                          </div>
+
+                                          <Badge
+                                            variant="outline"
+                                            className="h-5 border-green-200 bg-green-50 px-1 text-[10px] text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400"
+                                          >
+                                            {item.potential_saving}
+                                          </Badge>
                                         </div>
-
-                                        <Badge
-                                          variant="outline"
-                                          className="h-5 border-green-200 bg-green-50 px-1 text-[10px] text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400"
-                                        >
-                                          {item.potential_saving}
-                                        </Badge>
                                       </div>
-                                    </div>
-                                  ))}
+                                    ))
+                                ) : (
+                                  <div className="text-muted-foreground p-3 text-sm">
+                                    Analisando ações recomendadas baseadas na
+                                    sua conta...
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>

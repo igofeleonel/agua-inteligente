@@ -53,6 +53,35 @@ export function BillAnalyzer({
   // Evita erro de hidratação do Next.js
   useEffect(() => setReady(true), []);
 
+  // Adiciona estilos CSS para animação da linha de varredura
+  useEffect(() => {
+    if (scanning) {
+      const style = document.createElement("style");
+      style.textContent = `
+        @keyframes scanLine {
+          0% {
+            top: calc(50% - 128px);
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.8;
+          }
+          100% {
+            top: calc(50% + 128px);
+            opacity: 1;
+          }
+        }
+        .scan-line {
+          animation: scanLine 2s linear infinite;
+        }
+      `;
+      document.head.appendChild(style);
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+  }, [scanning]);
+
   async function safelyStop() {
     try {
       if (scannerRef.current) {
@@ -127,7 +156,15 @@ export function BillAnalyzer({
       });
 
       const data = await response.json();
-      console.log("Dados recebidos da API:", data);
+      console.log("=== DADOS RECEBIDOS DA API (TEMPO REAL) ===");
+      console.log("Raw data:", data);
+      console.log("Analysis:", data.analysis);
+      console.log("Nome:", data.analysis?.customer_full_name);
+      console.log("Instituição:", data.analysis?.institution);
+      console.log("Nº Conta:", data.analysis?.customer);
+      console.log("Período:", data.analysis?.month);
+      console.log("Data Validação:", data.analysis?.financial?.due_date);
+      console.log("===========================================");
 
       // Sempre processa os dados, mesmo se houver erro parcial
       if (data.error) {
@@ -161,64 +198,61 @@ export function BillAnalyzer({
         setAnalysisData(defaultData);
         onAnalysisComplete?.(defaultData);
       } else {
-        // Processa dados reais - só usa "xxxxx" se realmente não houver informação
+        // Processa dados reais em TEMPO REAL - remove "xxxxx" quando houver dados
+        const processField = (value: any, defaultValue: string = "xxxxx") => {
+          if (
+            !value ||
+            value === "xxxxx" ||
+            (typeof value === "string" && value.trim() === "")
+          ) {
+            return defaultValue;
+          }
+          return value;
+        };
+
         const processedData = {
           analysis: {
-            customer:
-              data.analysis?.customer && data.analysis.customer !== "xxxxx"
-                ? data.analysis.customer
-                : "xxxxx",
-            customer_full_name:
-              data.analysis?.customer_full_name &&
-              data.analysis.customer_full_name !== "xxxxx" &&
-              data.analysis.customer_full_name.trim() !== ""
-                ? data.analysis.customer_full_name
-                : "xxxxx",
-            institution:
-              data.analysis?.institution &&
-              data.analysis.institution !== "xxxxx" &&
-              data.analysis.institution.trim() !== ""
-                ? data.analysis.institution
-                : "xxxxx",
-            month:
-              data.analysis?.month && data.analysis.month !== "xxxxx"
-                ? data.analysis.month
-                : "xxxxx",
-            date:
-              data.analysis?.date && data.analysis.date !== "xxxxx"
-                ? data.analysis.date
-                : "xxxxx",
-            summary:
-              data.analysis?.summary ||
-              "Análise realizada, mas algumas informações não foram identificadas.",
+            customer: processField(data.analysis?.customer),
+            customer_full_name: processField(data.analysis?.customer_full_name),
+            institution: processField(data.analysis?.institution),
+            month: processField(data.analysis?.month),
+            date: processField(data.analysis?.date),
+            summary: data.analysis?.summary || "Análise realizada com sucesso.",
             consumption: data.analysis?.consumption || {
               total_m3: null,
               total_kwh: null,
               status: "MEDIUM",
               comparison: "",
             },
-            financial: data.analysis?.financial || {
-              total_value: 0,
-              due_date: "xxxxx",
+            financial: {
+              total_value: data.analysis?.financial?.total_value || 0,
+              due_date: processField(data.analysis?.financial?.due_date), // Data de validação
             },
             tips: data.analysis?.tips || [],
             action_items: data.analysis?.action_items || [],
           },
         };
 
-        // Log para debug
+        // Log para debug em tempo real
+        console.log("=== DADOS EXTRAÍDOS EM TEMPO REAL ===");
         console.log(
-          "Nome extraído:",
+          "Nome completo:",
           processedData.analysis.customer_full_name,
         );
+        console.log("Instituição:", processedData.analysis.institution);
+        console.log("Nº da Conta:", processedData.analysis.customer);
+        console.log("Período:", processedData.analysis.month);
         console.log(
-          "Instituição extraída:",
-          processedData.analysis.institution,
+          "Data de Validação:",
+          processedData.analysis.financial.due_date,
         );
+        console.log("Data:", processedData.analysis.date);
+        console.log("====================================");
+
+        // Atualiza estado imediatamente para exibir em tempo real
         setIsSuccess(true);
         setAnalysisText(processedData.analysis.summary);
         setAnalysisData(processedData);
-        console.log("Enviando dados para Dashboard:", processedData);
         onAnalysisComplete?.(processedData);
       }
     } catch (e) {
@@ -298,16 +332,46 @@ export function BillAnalyzer({
                     </Button>
                   </>
                 ) : (
-                  <div className="relative h-[400px] w-full">
+                  <div className="relative h-[400px] w-full overflow-hidden">
                     <div
                       id="qr-reader"
                       className="absolute top-0 left-0 h-full w-full bg-black/20"
                     />
 
-                    {/* Overlay do foco */}
+                    {/* Overlay do foco com linha de varredura animada */}
                     <div className="pointer-events-none absolute top-0 left-0 h-full w-full">
-                      <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-lg border-4 border-red-500" />
-                      <div className="absolute top-1/2 left-1/2 h-0.5 w-64 -translate-x-1/2 -translate-y-1/2 animate-pulse bg-red-500" />
+                      {/* Moldura do scanner */}
+                      <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-lg border-4 border-red-500 shadow-lg shadow-red-500/50" />
+
+                      {/* Cantos decorativos */}
+                      <div className="absolute top-1/2 left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2">
+                        {/* Canto superior esquerdo */}
+                        <div className="absolute top-0 left-0 h-8 w-8 rounded-tl-lg border-t-4 border-l-4 border-red-400" />
+                        {/* Canto superior direito */}
+                        <div className="absolute top-0 right-0 h-8 w-8 rounded-tr-lg border-t-4 border-r-4 border-red-400" />
+                        {/* Canto inferior esquerdo */}
+                        <div className="absolute bottom-0 left-0 h-8 w-8 rounded-bl-lg border-b-4 border-l-4 border-red-400" />
+                        {/* Canto inferior direito */}
+                        <div className="absolute right-0 bottom-0 h-8 w-8 rounded-br-lg border-r-4 border-b-4 border-red-400" />
+                      </div>
+
+                      {/* Linha de varredura animada - se move de cima para baixo */}
+                      <div
+                        className="scan-line absolute left-1/2 h-1 w-64 -translate-x-1/2 shadow-lg shadow-red-500/80"
+                        style={{
+                          background:
+                            "linear-gradient(to right, transparent, #ef4444, transparent)",
+                          top: "calc(50% - 128px)",
+                        }}
+                      />
+
+                      {/* Efeito de brilho na linha */}
+                      <div
+                        className="scan-line absolute left-1/2 h-0.5 w-64 -translate-x-1/2 bg-red-400 opacity-75 blur-sm"
+                        style={{
+                          top: "calc(50% - 128px)",
+                        }}
+                      />
                     </div>
 
                     <Button
@@ -316,7 +380,7 @@ export function BillAnalyzer({
                         safelyStop();
                         setScanning(false);
                       }}
-                      className="absolute bottom-4 left-1/2 -translate-x-1/2"
+                      className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2"
                     >
                       Cancelar
                     </Button>
@@ -369,56 +433,79 @@ export function BillAnalyzer({
                     Informações da Conta
                   </h4>
                   <div className="space-y-2">
+                    {/* Nome Completo - SEMPRE mostra */}
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground text-xs">
-                        Nome:
+                      <User className="text-primary h-3 w-3" />
+                      <span className="text-muted-foreground text-xs font-medium">
+                        Nome Completo:
                       </span>
-                      <span className="text-foreground text-sm font-medium">
-                        {analysisData.analysis?.customer_full_name ||
-                          analysisData.analysis?.customer ||
-                          "xxxxx"}
+                      <span className="text-foreground text-sm font-semibold">
+                        {analysisData.analysis?.customer_full_name &&
+                        analysisData.analysis.customer_full_name !== "xxxxx"
+                          ? analysisData.analysis.customer_full_name
+                          : analysisData.analysis?.customer &&
+                              analysisData.analysis.customer !== "xxxxx"
+                            ? analysisData.analysis.customer
+                            : "Aguardando leitura..."}
                       </span>
                     </div>
+
+                    {/* Instituição - SEMPRE mostra */}
                     <div className="flex items-center gap-2">
                       <Building2 className="text-primary h-3 w-3" />
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-muted-foreground text-xs font-medium">
                         Instituição:
                       </span>
-                      <span className="text-foreground text-sm font-medium">
-                        {analysisData.analysis?.institution || "xxxxx"}
+                      <span className="text-foreground text-sm font-semibold">
+                        {analysisData.analysis?.institution &&
+                        analysisData.analysis.institution !== "xxxxx"
+                          ? analysisData.analysis.institution
+                          : "Aguardando leitura..."}
                       </span>
                     </div>
-                    {analysisData.analysis?.customer &&
-                      analysisData.analysis?.customer_full_name && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground text-xs">
-                            Conta:
-                          </span>
-                          <span className="text-foreground text-sm">
-                            {analysisData.analysis.customer}
-                          </span>
-                        </div>
-                      )}
+
+                    {/* Nº da Conta - SEMPRE mostra */}
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-muted-foreground text-xs font-medium">
+                        Nº da Conta:
+                      </span>
+                      <span className="text-foreground text-sm font-semibold">
+                        {analysisData.analysis?.customer &&
+                        analysisData.analysis.customer !== "xxxxx"
+                          ? analysisData.analysis.customer
+                          : "Aguardando leitura..."}
+                      </span>
+                    </div>
+
+                    {/* Período - SEMPRE mostra */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs font-medium">
                         Período:
                       </span>
-                      <span className="text-foreground text-sm">
-                        {analysisData.analysis?.month || "xxxxx"}
+                      <span className="text-foreground text-sm font-semibold">
+                        {analysisData.analysis?.month &&
+                        analysisData.analysis.month !== "xxxxx"
+                          ? analysisData.analysis.month
+                          : "Aguardando leitura..."}
                       </span>
                     </div>
-                    {analysisData.analysis?.date &&
-                      analysisData.analysis.date !== "xxxxx" && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="text-primary h-3 w-3" />
-                          <span className="text-muted-foreground text-xs">
-                            Data:
-                          </span>
-                          <span className="text-foreground text-sm">
-                            {analysisData.analysis.date}
-                          </span>
-                        </div>
-                      )}
+
+                    {/* Data de Validação - SEMPRE mostra */}
+                    <div className="flex items-center gap-2">
+                      <Calendar className="text-primary h-3 w-3" />
+                      <span className="text-muted-foreground text-xs font-medium">
+                        Data de Validação:
+                      </span>
+                      <span className="text-foreground text-sm font-semibold">
+                        {analysisData.analysis?.financial?.due_date &&
+                        analysisData.analysis.financial.due_date !== "xxxxx"
+                          ? analysisData.analysis.financial.due_date
+                          : analysisData.analysis?.date &&
+                              analysisData.analysis.date !== "xxxxx"
+                            ? analysisData.analysis.date
+                            : "Aguardando leitura..."}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
