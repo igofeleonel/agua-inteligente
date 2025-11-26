@@ -23,8 +23,11 @@ export async function POST(req: Request) {
 Você é uma IA especialista em análise de contas de água e energia. 
 O usuário enviou um texto extraído via leitura de QR Code ou código de barras.
 
-IMPORTANTE: Mesmo que o texto seja curto, incompleto ou não tenha informações claras, você DEVE retornar um JSON válido. 
-Se não encontrar informações específicas, use valores padrão ou placeholders como "xxxxx" para indicar que não foi possível identificar.
+IMPORTANTE: 
+- Você DEVE extrair informações REAIS do texto. NUNCA use "xxxxx" a menos que seja IMPOSSÍVEL identificar.
+- Analise TODO o texto cuidadosamente para encontrar nomes, datas, valores, instituições.
+- QR codes e códigos de barras de contas (Sanepar, Copel) contêm informações estruturadas - extraia TODAS.
+- Se encontrar QUALQUER informação, use ela. Só use valores padrão se realmente não houver dados.
 
 Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (SEM comentários, SEM texto fora do JSON):
 
@@ -59,11 +62,12 @@ Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (S
 
 2. "customer_full_name"
    - Extraia o NOME COMPLETO do cliente/titular da conta.
-   - Procure por nomes próprios no texto (ex: "João Silva", "Maria Santos", "JOSE DA SILVA").
+   - Procure por nomes próprios no texto (ex: "João Silva", "Maria Santos", "JOSE DA SILVA", "IGOR", "MARIA").
    - Nomes podem estar em MAIÚSCULAS, minúsculas ou mistos.
    - Procure por padrões como: palavras que começam com letra maiúscula seguidas de outras palavras.
+   - Se encontrar apenas primeiro nome (ex: "Igor", "Maria"), use ele mesmo - NÃO use "xxxxx".
    - Se encontrar múltiplos nomes, use o mais completo ou o que parecer ser o titular.
-   - Se não encontrar, use "xxxxx" para indicar que não foi identificado.
+   - Se realmente não encontrar NENHUM nome, use "xxxxx".
 
 3. "institution"
    - Identifique a instituição/empresa fornecedora (ex: "Sanepar", "Copel", "Cemig", "Sabesp", "AES Eletropaulo").
@@ -106,36 +110,52 @@ Sua tarefa é analisar esse texto e devolver APENAS um JSON no formato abaixo (S
    - Se não encontrar, use "xxxxx".
 
 9. "tips"
-   - Gere uma lista de 5 a 10 dicas curtas para economizar.
-   - Misture dicas de água e energia baseadas no tipo de conta.
+   - Gere uma lista de 8 a 12 dicas ESPECÍFICAS para economizar água/energia.
+   - Baseie-se nas recomendações oficiais da Sanepar e Copel.
+   - Foque em economia de até 50%: vazamentos, desperdício, soluções baratas.
+   - Inclua dicas sobre: verificar vazamentos, arejadores, descargas econômicas, reuso de água, banhos rápidos.
    - Seja direto e prático.
    - Cada dica deve ter no máximo 80 caracteres.
+   - Exemplos: "Verifique vazamentos em torneiras e canos", "Use arejador para reduzir vazão em 50%", "Reaproveite água da máquina de lavar".
 
 10. "action_items"
-   - Gere 3 a 5 ações de impacto real.
+   - Gere 4 a 6 ações ESPECÍFICAS para economizar até 50% na conta.
+   - Baseie-se em soluções da Sanepar/Copel: verificação de vazamentos, instalação de redutores, reuso de água.
    - Formato exato:
      {
-       "action": "Descrição objetiva da ação",
+       "action": "Descrição objetiva da ação (ex: 'Instalar arejador em todas as torneiras')",
        "priority": "LOW | MEDIUM | HIGH",
-       "potential_saving": "R$ X/mês"
+       "potential_saving": "R$ X/mês ou X% de economia"
      }
    - Prioridade baseada no impacto e facilidade de implementação.
+   - Foque em ações que realmente economizam água e reduzem a conta.
 
 11. IMPORTANTE:
    - NUNCA envie texto fora do JSON.
    - NUNCA invente valores absurdos. Seja coerente.
-   - Se não encontrar uma informação, use null para números e "xxxxx" para textos quando não identificado.
+   - PRIORIDADE: Extraia informações REAIS. Só use "xxxxx" se for IMPOSSÍVEL identificar.
+   - Se encontrar QUALQUER nome (mesmo que só primeiro nome como "Igor" ou "Maria"), use ele - NÃO use "xxxxx".
+   - Analise TODO o texto do QR code/código de barras cuidadosamente.
+   - QR codes de contas (Sanepar, Copel) contêm dados estruturados - extraia TUDO que encontrar.
    - O JSON deve ser válido e parseável.
-   - Analise TODO o texto do QR code, mesmo que pareça codificado ou em formato estranho.
-   - QR codes de contas (Sanepar, Copel) podem conter dados em formato específico - extraia o máximo possível.
+
+12. DICAS ESPECÍFICAS SANEPAR/COPEL (para economia de até 50%):
+   - Baseie-se nas recomendações oficiais das empresas.
+   - Foque em: verificação de vazamentos, arejadores de torneira, descargas econômicas, banhos rápidos.
+   - Inclua soluções baratas: garrafa na caixa d'água, reuso de água da máquina, coleta de chuva.
+   - Evite desperdício: não deixar torneira aberta, consertar vazamentos imediatamente.
+   - Meta: reduzir consumo em até 50% com ações práticas e baratas.
 
 Texto da conta extraído do QR Code/Código de Barras:
 "${text}"
 
-ANÁLISE DETALHADA:
+ANÁLISE DETALHADA - EXTRAIA TUDO:
 - Procure por TODOS os padrões de nome, data, valor, instituição no texto acima.
 - Extraia informações mesmo que estejam em formatos diferentes ou codificados.
+- Se encontrar "Igor", "Maria", "João" ou qualquer nome, use ele - NÃO use "xxxxx".
+- Se encontrar "Sanepar", "Copel" ou qualquer instituição, use ela - NÃO use "xxxxx".
 - Se o texto contiver apenas números/códigos, tente identificar padrões de conta, data, valor.
+- Seja AGRESSIVO na extração - melhor pegar informação parcial do que usar "xxxxx".
     `;
     // ---------------------------------------------------------
 

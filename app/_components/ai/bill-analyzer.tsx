@@ -71,10 +71,16 @@ export function BillAnalyzer({
     const scanner = new Html5Qrcode("qr-reader");
     scannerRef.current = scanner;
 
+    // html5-qrcode já suporta QR codes e códigos de barras automaticamente
     scanner
       .start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          // Suporta automaticamente: QR_CODE, CODE_128, CODE_39, EAN_13, EAN_8, UPC_A, UPC_E, etc.
+        },
         async (decoded: string) => {
           await safelyStop();
           setScanning(false);
@@ -155,14 +161,33 @@ export function BillAnalyzer({
         setAnalysisData(defaultData);
         onAnalysisComplete?.(defaultData);
       } else {
-        // Garante que sempre tenha estrutura válida
+        // Processa dados reais - só usa "xxxxx" se realmente não houver informação
         const processedData = {
           analysis: {
-            customer: data.analysis?.customer || "xxxxx",
-            customer_full_name: data.analysis?.customer_full_name || "xxxxx",
-            institution: data.analysis?.institution || "xxxxx",
-            month: data.analysis?.month || "xxxxx",
-            date: data.analysis?.date || "xxxxx",
+            customer:
+              data.analysis?.customer && data.analysis.customer !== "xxxxx"
+                ? data.analysis.customer
+                : "xxxxx",
+            customer_full_name:
+              data.analysis?.customer_full_name &&
+              data.analysis.customer_full_name !== "xxxxx" &&
+              data.analysis.customer_full_name.trim() !== ""
+                ? data.analysis.customer_full_name
+                : "xxxxx",
+            institution:
+              data.analysis?.institution &&
+              data.analysis.institution !== "xxxxx" &&
+              data.analysis.institution.trim() !== ""
+                ? data.analysis.institution
+                : "xxxxx",
+            month:
+              data.analysis?.month && data.analysis.month !== "xxxxx"
+                ? data.analysis.month
+                : "xxxxx",
+            date:
+              data.analysis?.date && data.analysis.date !== "xxxxx"
+                ? data.analysis.date
+                : "xxxxx",
             summary:
               data.analysis?.summary ||
               "Análise realizada, mas algumas informações não foram identificadas.",
@@ -180,6 +205,16 @@ export function BillAnalyzer({
             action_items: data.analysis?.action_items || [],
           },
         };
+
+        // Log para debug
+        console.log(
+          "Nome extraído:",
+          processedData.analysis.customer_full_name,
+        );
+        console.log(
+          "Instituição extraída:",
+          processedData.analysis.institution,
+        );
         setIsSuccess(true);
         setAnalysisText(processedData.analysis.summary);
         setAnalysisData(processedData);
@@ -247,7 +282,8 @@ export function BillAnalyzer({
                       Ler QR Code da Conta
                     </h3>
                     <p className="text-muted-foreground mb-4 max-w-xs text-sm">
-                      Aponte a câmera para o QR Code da conta de água.
+                      Aponte a câmera para o QR Code ou código de barras da
+                      conta de água (Sanepar/Copel).
                     </p>
 
                     {cameraError && (
