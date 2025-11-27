@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     if (!file) {
       return NextResponse.json(
         { error: "Nenhum arquivo enviado" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -16,12 +16,12 @@ export async function POST(request: Request) {
     const base64Data = Buffer.from(arrayBuffer).toString("base64");
     const mimeType = file.type;
 
-    const apiKey = 'SUACHAVEAQUI'
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
         { error: "Chave da API Gemini não configurada" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
             },
           ],
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       console.error("Gemini API Error:", errorData);
       return NextResponse.json(
         { error: "Erro ao processar com Gemini API", details: errorData },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
@@ -108,7 +108,10 @@ export async function POST(request: Request) {
       throw new Error("Resposta vazia do Gemini");
     }
 
-    const cleanJson = textResponse.replace(/```json/g, "").replace(/```/g, "").trim();
+    const cleanJson = textResponse
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
 
     const parsedData = JSON.parse(cleanJson);
 
@@ -117,8 +120,7 @@ export async function POST(request: Request) {
     console.error("Erro na análise:", error);
     return NextResponse.json(
       { error: "Falha na análise do arquivo" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
