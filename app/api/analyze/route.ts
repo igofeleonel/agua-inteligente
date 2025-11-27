@@ -22,6 +22,7 @@ export async function POST(req: Request) {
 
     if (!text) {
       return NextResponse.json(
+        { error: "Nenhum arquivo enviado" },
         { error: "Nenhum texto enviado." },
         { status: 400 },
       );
@@ -32,6 +33,14 @@ export async function POST(req: Request) {
 Você é uma IA especialista em análise de contas de água e energia. 
 O usuário enviou um texto extraído via leitura de QR Code ou código de barras.
 
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Chave da API Gemini não configurada" },
+        { status: 500 },
+      );
+    }
 IMPORTANTE: 
 - Você DEVE extrair informações REAIS do texto. NUNCA use "xxxxx" a menos que seja IMPOSSÍVEL identificar.
 - Analise TODO o texto cuidadosamente para encontrar nomes, datas, valores, instituições.
@@ -171,7 +180,42 @@ ANÁLISE DETALHADA - EXTRAIA TUDO EM TEMPO REAL:
 - O objetivo é mostrar dados REAIS em TEMPO REAL, não placeholders.
     `;
     // ---------------------------------------------------------
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt,
+                },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: base64Data,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    );
 
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Gemini API Error:", errorData);
+      return NextResponse.json(
+        { error: "Erro ao processar com Gemini API", details: errorData },
+        { status: response.status },
+      );
+    }
     console.log("=== GEMINI API - INICIANDO ANÁLISE ===");
     console.log(
       "Texto recebido (primeiros 200 chars):",
@@ -205,7 +249,11 @@ ANÁLISE DETALHADA - EXTRAIA TUDO EM TEMPO REAL:
         console.error("Resposta original:", responseText);
         console.error("Resposta limpa:", cleanedResponse);
         console.error("Erro:", parseError);
-
+        
+    const cleanJson = textResponse
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
         return NextResponse.json(
           {
             error: "A IA retornou uma resposta inválida.",
@@ -242,6 +290,7 @@ ANÁLISE DETALHADA - EXTRAIA TUDO EM TEMPO REAL:
     }
   } catch (error: any) {
     return NextResponse.json(
+      { error: "Falha na análise do arquivo" },
       { error: error?.message ?? "Erro interno" },
       { status: 500 },
     );

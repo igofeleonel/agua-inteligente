@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   ArrowRight,
   TrendingDown,
+  FileJson,
   User,
   Building2,
   Calendar,
@@ -129,6 +130,12 @@ export default function Dashboard() {
             className="bg-secondary text-primary hover:bg-secondary/80 border-border border px-3 py-1 text-sm font-medium"
           >
             <Droplet className="mr-2 h-4 w-4" />
+            Economia Estimada: R${" "}
+            {analyzedData
+              ? analyzedData.analysis.financial?.total_value
+                ? (analyzedData.analysis.financial.total_value * 0.2).toFixed(2)
+                : "45,00"
+              : "45,00"}
             Economia Estimada: R$ {Number(totalValue * 0.2).toFixed(2)}
           </Badge>
         </div>
@@ -183,6 +190,9 @@ export default function Dashboard() {
                     {analyzedData && !isAnalyzing && (
                       <Badge
                         variant="outline"
+                        className="border-[#51A2FF] bg-[#14273B] text-[#51A2FF] dark:border-[#51A2FF] dark:bg-[#14273B] dark:text-[#51A2FF]"
+                      >
+                        <CheckCircle2 className="mr-1 h-3 w-3 text-[#51A2FF]" />
                         className="border-[#14273B] bg-[#14273B] text-[#51A2FF] dark:border-[#14273B] dark:bg-[#14273B] dark:text-[#51A2FF]"
                       >
                         <CheckCircle2 className="mr-1 h-3 w-3" />
@@ -201,6 +211,20 @@ export default function Dashboard() {
                 </CardHeader>
 
                 <CardContent>
+
+                  {isAnalyzing ? (
+                    <div className="animate-pulse space-y-6">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <Skeleton className="h-24 w-full rounded-xl" />
+                        <Skeleton className="h-24 w-full rounded-xl" />
+                      </div>
+                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                        <div className="space-y-3">
+                          <Skeleton className="h-6 w-40" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-12 w-full" />
                   {/* Informações do Cliente e Instituição - SEMPRE mostra quando há analyzedData em TEMPO REAL */}
                   {analyzedData && (
                     <div className="bg-secondary/30 border-border animate-in fade-in mb-6 rounded-lg border p-4 duration-300">
@@ -240,6 +264,21 @@ export default function Dashboard() {
                             </div>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  ) : !analyzedData ? (
+                    <div className="space-y-4">
+                      <div className="bg-secondary/50 border-border rounded-lg border p-4">
+                        <h4 className="text-primary mb-2 font-medium">
+                          Resumo da Análise
+                        </h4>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
+                          Faça o upload da sua conta ao lado para que a I.A
+                          possa identificar padrões de consumo e sugerir
+                          melhorias. O sistema irá ler o QR Code ou os dados da
+                          imagem.
+                        </p>
+                      </div>
 
                         {/* Nº da Conta */}
                         <div className="flex items-center gap-2">
@@ -315,6 +354,57 @@ export default function Dashboard() {
                       </div>
                     </div>
                   ) : (
+                    <div className="animate-in fade-in space-y-6 duration-500">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="bg-secondary/30 border-border hover:bg-secondary/50 rounded-xl border p-4 transition-colors">
+                          <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
+                            Valor Total
+                          </div>
+                          <div className="text-primary text-2xl font-bold">
+                            R${" "}
+                            {analyzedData.analysis.financial?.total_value?.toFixed(
+                              2,
+                            ) ?? "0.00"}
+                          </div>
+                          <div className="text-muted-foreground mt-1 text-xs">
+                            Vencimento:{" "}
+                            {analyzedData.analysis.financial?.due_date ??
+                              "Não identificado"}
+                          </div>
+                        </div>
+                        <div className="bg-secondary/30 border-border hover:bg-secondary/50 rounded-xl border p-4 transition-colors">
+                          <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
+                            Consumo
+                          </div>
+                          <div className="flex items-baseline gap-1">
+                            <div className="text-foreground text-2xl font-bold">
+                              {analyzedData.analysis.consumption?.total_m3 ??
+                                analyzedData.analysis.consumption?.total_kwh ??
+                                "0"}
+                            </div>
+                            <span className="text-muted-foreground text-sm font-medium">
+                              {analyzedData.analysis.consumption?.total_m3
+                                ? "m³"
+                                : "kWh"}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-1 text-xs">
+                            <Badge
+                              variant={
+                                analyzedData.analysis.consumption?.status ===
+                                "HIGH"
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                              className="h-5 px-1.5 text-[10px]"
+                            >
+                              {analyzedData.analysis.consumption?.status ??
+                                "N/A"}
+                            </Badge>
+                            <span className="text-muted-foreground max-w-20 truncate">
+                              {analyzedData.analysis.consumption?.comparison ??
+                                ""}
+                            </span>
                     <div className="space-y-6">
                       {/* Seção Resumo e Consumo - Sempre visível quando não está analisando */}
                       <div className="space-y-4">
@@ -384,7 +474,22 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
-
+                      
+                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                        <div className="space-y-3">
+                          <h4 className="text-foreground flex items-center text-sm font-semibold">
+                            <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" />
+                            Insights da IA
+                          </h4>
+                          <div className="bg-secondary/20 space-y-2 rounded-lg p-3">
+                            {analyzedData.analysis.insights?.map(
+                              (insight: string, i: number) => (
+                                <div
+                                  key={i}
+                                  className="text-muted-foreground flex items-start gap-2 text-sm"
+                                >
+                                  <ArrowRight className="text-primary mt-1 h-3 w-3 shrink-0" />
+                                  <span>{insight}</span>
                       {/* Seção Detalhada - Aparece em TEMPO REAL quando há dados analisados */}
                       {analyzedData && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6 duration-500">
@@ -443,7 +548,42 @@ export default function Dashboard() {
                               </div>
                             </div>
                           </div>
-
+                                      
+                        <div className="space-y-3">
+                          <h4 className="text-foreground flex items-center text-sm font-semibold">
+                            <TrendingDown className="mr-2 h-4 w-4 text-green-500" />
+                            Ações Recomendadas
+                          </h4>
+                          <div className="grid gap-2">
+                            {analyzedData.analysis.action_items
+                              ?.slice(0, 3)
+                              .map((item: any, i: number) => (
+                                <div
+                                  key={i}
+                                  className="group bg-card border-border hover:border-primary/30 relative overflow-hidden rounded-lg border p-2.5 transition-all hover:shadow-sm"
+                                >
+                                  <div
+                                    className={`absolute top-0 bottom-0 left-0 w-1 ${item.priority === "HIGH" ? "bg-red-500" : item.priority === "MEDIUM" ? "bg-yellow-500" : "bg-blue-500"}`}
+                                  />
+                                  <div className="flex items-start justify-between gap-2 pl-2">
+                                    <div>
+                                      <p className="text-foreground group-hover:text-primary line-clamp-1 text-xs font-medium transition-colors">
+                                        {item.action}
+                                      </p>
+                                      <p className="text-muted-foreground mt-0.5 text-[10px]">
+                                        Prioridade {item.priority}
+                                      </p>
+                                    </div>
+                                    <Badge
+                                      variant="outline"
+                                      className="h-5 border-[#51A2FF] bg-[#14273B] px-1 text-[10px] whitespace-nowrap text-[#51A2FF] dark:border-[#51A2FF] dark:bg-[#14273B] dark:text-[#51A2FF]"
+                                    >
+                                      {item.potential_saving}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            
                           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                             <div className="animate-in fade-in slide-in-from-left space-y-3 duration-500">
                               <h4 className="text-foreground flex items-center text-sm font-semibold">
@@ -568,6 +708,30 @@ export default function Dashboard() {
                             </div>
                           </div>
 
+                      <div className="flex justify-end pt-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-border text-muted-foreground hover:text-foreground flex h-8 items-center gap-2 bg-transparent text-xs"
+                            >
+                              <FileJson className="h-3 w-3" />
+                              Ver JSON Completo
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-card border-border max-h-[80vh] max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle className="text-foreground">
+                                Resposta da Gemini API
+                              </DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="border-border text-primary h-[400px] w-full rounded-md border bg-[#0E131B] p-4 font-mono text-xs">
+                              <pre>{JSON.stringify(analyzedData, null, 2)}</pre>
+                            </ScrollArea>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                           <div className="flex justify-end pt-2">
                             <Dialog>
                               <DialogTrigger asChild>

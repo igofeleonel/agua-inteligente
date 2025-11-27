@@ -3,6 +3,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+
+import type React from "react";
+import { useState } from "react";
+import { Upload, Loader2, ScanLine, CheckCircle2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 
@@ -294,6 +298,8 @@ export function BillAnalyzer({
 
   return (
     <Card className="border-border bg-card h-full overflow-hidden shadow-lg transition-all hover:shadow-xl">
+      {/* 🔥 TÍTULO COM COR #121D25 */}
+      <CardHeader className="border-border border-b bg-[#121D25] dark:bg-[#121D25]">
       <CardHeader className="border-border border-b bg-linear-to-r from-[#121D25] to-[#122529]">
         <CardTitle className="text-foreground flex items-center gap-2 text-xl">
           <ScanLine className="text-primary h-6 w-6" />
@@ -306,6 +312,54 @@ export function BillAnalyzer({
 
       <CardContent className="p-6">
         {!isSuccess ? (
+          <div
+            className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-all duration-300 ${
+              dragActive
+                ? "border-primary bg-primary/5 scale-[1.02]"
+                : "border-border hover:border-primary/50 bg-secondary/20"
+            }`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              accept="image/*,application/pdf"
+              onChange={handleFileChange}
+            />
+
+            <div className="bg-secondary border-border mb-4 rounded-full border p-4 shadow-sm">
+              <Upload className="text-primary h-8 w-8" />
+            </div>
+
+            <h3 className="text-foreground mb-1 text-lg font-semibold">
+              {selectedFile ? selectedFile.name : "Upload da Conta"}
+            </h3>
+
+            <p className="text-muted-foreground mb-6 max-w-xs text-sm">
+              {selectedFile
+                ? "Arquivo selecionado. Clique abaixo para processar."
+                : "Arraste sua conta de água ou luz aqui, ou clique para selecionar."}
+            </p>
+
+            {!selectedFile ? (
+              <Button
+                variant="outline"
+                onClick={() => document.getElementById("file-upload")?.click()}
+                className="w-full max-w-xs"
+              >
+                Selecionar Arquivo
+              </Button>
+            ) : (
+              <Button
+                onClick={analyzeBill}
+                disabled={isAnalyzing}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2 w-full max-w-xs shadow-md transition-all hover:scale-105"
+              >
+                {isAnalyzing ? (
           <>
             {!decodedText ? (
               <div className="flex flex-col items-center text-center">
@@ -404,12 +458,17 @@ export function BillAnalyzer({
               <div className="mb-4 rounded-full bg-green-100 p-4 dark:bg-green-900/30">
                 <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
+
               <h3 className="text-foreground mb-2 text-xl font-semibold">
                 Análise Concluída!
               </h3>
+
               <p className="text-muted-foreground mb-6 max-w-xs text-sm">
+                Os dados da sua conta foram processados com sucesso. Confira os
+                insights ao lado.
                 A análise com QR Code foi realizada com sucesso!
               </p>
+
               <Button
                 variant="outline"
                 onClick={() => {
