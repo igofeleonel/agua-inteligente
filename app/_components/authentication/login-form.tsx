@@ -56,7 +56,7 @@ export default function LoginForm() {
                 fill="#EA4335"
               />
             </svg>
-            Entrar com Google
+            E-mail em sua conta do Google
           </Button>
 
           <div className="relative">
